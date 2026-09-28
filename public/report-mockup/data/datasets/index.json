@@ -1,0 +1,25 @@
+{
+  "datasets": [
+    {
+      "id": "mes-production",
+      "system": "MES",
+      "name": "생산 실적",
+      "summary": "2026-07 · 라인 A~C · 1,284행",
+      "file": "data/datasets/mes-production.json"
+    },
+    {
+      "id": "mes-equipment",
+      "system": "MES",
+      "name": "설비 가동 이력",
+      "summary": "2026-07 · 전체 설비 · 862행",
+      "file": "data/datasets/mes-equipment.json"
+    },
+    {
+      "id": "erp-material",
+      "system": "ERP",
+      "name": "자재 입출고",
+      "summary": "2026-06~07 · 창고 2곳 · 3,910행",
+      "file": "data/datasets/erp-material.json"
+    }
+  ]
+}

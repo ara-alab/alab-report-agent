@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* 진입 페이지 팔레트 — 목업과 같은 역할 구분, 대비는 WCAG 2.1 AA 기준 충족값 */
+:root {
+  color-scheme: light;
+  --page-bg: #FFFFFF;
+  --page-ink: #242424;
+  --page-ink-muted: #565656;
+  --page-accent: #00767C;  /* 링크 — 강조 청록 #00A5AE 은 흰 바탕 3.0:1 로 AA 미달 */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page-bg: #14161A;
+    --page-ink: #F1F3F9;
+    --page-ink-muted: #B4BCCA;
+    --page-accent: #2FC4CE;
+  }
+}
+
+html,
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--page-bg);
+  color: var(--page-ink);
+}

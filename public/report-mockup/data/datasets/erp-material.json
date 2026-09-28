@@ -1,0 +1,69 @@
+{
+  "id": "erp-material",
+  "system": "ERP",
+  "name": "자재 입출고",
+  "table": "mm200",
+  "period": {
+    "from": "2026-06-01",
+    "to": "2026-07-31",
+    "label": "2026년 6~7월"
+  },
+  "filter": "본사 창고 2곳 · 주요 자재 3품목",
+  "row_count": 3910,
+  "doc": {
+    "title": "6~7월 자재 수불 현황 보고",
+    "name": "2026년 6~7월 자재 수불 분석",
+    "no_prefix": "RPT-MTL",
+    "group_title": "품목별"
+  },
+  "demo": {
+    "ask": "「자재 입출고」 데이터로 6~7월 수불 현황 보고서를 만들어 줘. 품목별 입고·출고와 순증감을 한 표로 묶어 줘."
+  },
+  "fields": [
+    {"key": "date", "label": "기준일", "align": "c"},
+    {"key": "item_nm", "label": "품명", "align": "c"},
+    {"key": "item_cd", "label": "품번", "align": "c"},
+    {"key": "in_qty", "label": "입고수량", "align": "n"},
+    {"key": "out_qty", "label": "출고수량", "align": "n"}
+  ],
+  "group_by": "item_nm",
+  "sum": ["in_qty", "out_qty"],
+  "derived": [
+    {
+      "label": "순증감",
+      "align": "n",
+      "kind": "diff",
+      "plus": ["in_qty"],
+      "minus": ["out_qty"],
+      "unit": "EA"
+    }
+  ],
+  "headline": [
+    {"label": "총 입고수량", "kind": "sum", "key": "in_qty", "unit": "EA", "tone": "good"},
+    {"label": "총 출고수량", "kind": "sum", "key": "out_qty", "unit": "EA"},
+    {
+      "label": "순증감",
+      "kind": "diff",
+      "plus": ["in_qty"],
+      "minus": ["out_qty"],
+      "unit": "EA",
+      "tone": "bad"
+    },
+    {"label": "대상 품목", "kind": "groups", "unit": "품목"},
+    {"label": "집계 건수", "kind": "rows", "unit": "건"}
+  ],
+  "rows": [
+    {"date": "2026-06-15", "item_nm": "제어 모듈 하우징", "item_cd": "P2101-00", "in_qty": 1200, "out_qty": 1150, "note": ""},
+    {"date": "2026-06-30", "item_nm": "제어 모듈 하우징", "item_cd": "P2101-00", "in_qty": 900, "out_qty": 980, "note": ""},
+    {"date": "2026-07-15", "item_nm": "제어 모듈 하우징", "item_cd": "P2101-00", "in_qty": 1100, "out_qty": 1060, "note": ""},
+    {"date": "2026-07-31", "item_nm": "제어 모듈 하우징", "item_cd": "P2101-00", "in_qty": 800, "out_qty": 860, "note": ""},
+    {"date": "2026-06-15", "item_nm": "구동 유닛 브래킷", "item_cd": "P3101-00", "in_qty": 2000, "out_qty": 1900, "note": ""},
+    {"date": "2026-06-30", "item_nm": "구동 유닛 브래킷", "item_cd": "P3101-00", "in_qty": 1500, "out_qty": 1620, "note": ""},
+    {"date": "2026-07-15", "item_nm": "구동 유닛 브래킷", "item_cd": "P3101-00", "in_qty": 1800, "out_qty": 1750, "note": ""},
+    {"date": "2026-07-31", "item_nm": "구동 유닛 브래킷", "item_cd": "P3101-00", "in_qty": 1400, "out_qty": 1480, "note": "출고 초과로 안전재고 하회 · 긴급 발주 요청 등록"},
+    {"date": "2026-06-15", "item_nm": "구동 유닛 베이스", "item_cd": "P3102-00", "in_qty": 5000, "out_qty": 4800, "note": ""},
+    {"date": "2026-06-30", "item_nm": "구동 유닛 베이스", "item_cd": "P3102-00", "in_qty": 4200, "out_qty": 4400, "note": ""},
+    {"date": "2026-07-15", "item_nm": "구동 유닛 베이스", "item_cd": "P3102-00", "in_qty": 4600, "out_qty": 4500, "note": ""},
+    {"date": "2026-07-31", "item_nm": "구동 유닛 베이스", "item_cd": "P3102-00", "in_qty": 3800, "out_qty": 3900, "note": ""}
+  ]
+}

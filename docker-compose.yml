@@ -1,0 +1,25 @@
+# 배포 — 전송받은 이미지를 기존 프록시 스택의 외부 망에 붙임
+#   포트 미노출 — 진입은 그 스택의 nginx 가 전담, 목업 컨테이너는 망 안에서만 도달
+#   망 이름 확인: docker network ls | grep public
+name: alab-report
+
+services:
+  report:
+    image: alab-data-report:${IMAGE_TAG:-latest}
+    container_name: alab-report
+    restart: unless-stopped
+    networks:
+      proxy:
+        aliases: [alab-report]        # nginx 가 이 이름으로 해석 — vhost 의 $report_upstream 과 일치
+    expose: ["3000"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy_public}

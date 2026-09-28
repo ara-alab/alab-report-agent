@@ -1,0 +1,61 @@
+{
+  "source": "MES 일일 보고서",
+  "period": { "from": "2026-08-17", "to": "2026-08-21", "label": "2026년 8월 3주차" },
+  "reports": [
+    {
+      "date": "2026-08-17",
+      "emp_no": "EMP001",
+      "reporter": "박지훈 사원 (생산기술부)",
+      "line_no": "L01",
+      "part_no": "P2101-00",
+      "target_qty": 500,
+      "good_qty": 492,
+      "defect_qty": 8,
+      "anomalies": "M-101 가공기 진동 상한 초과로 치수 불량 8건 검출, 공구 교체 후 조치 완료."
+    },
+    {
+      "date": "2026-08-18",
+      "emp_no": "EMP002",
+      "reporter": "윤서준 사원 (품질보증팀)",
+      "line_no": "L01",
+      "part_no": "P3101-00",
+      "target_qty": 600,
+      "good_qty": 598,
+      "defect_qty": 2,
+      "anomalies": ""
+    },
+    {
+      "date": "2026-08-19",
+      "emp_no": "EMP003",
+      "reporter": "한동욱 사원 (생산기술부)",
+      "line_no": "L03",
+      "part_no": "P2101-00",
+      "target_qty": 550,
+      "good_qty": 530,
+      "defect_qty": 20,
+      "anomalies": "후처리기 압력 편차로 3라인 후처리기 일시 점검. 필터 선제 교체 조치 완료."
+    },
+    {
+      "date": "2026-08-20",
+      "emp_no": "EMP001",
+      "reporter": "박지훈 사원 (생산기술부)",
+      "line_no": "L01",
+      "part_no": "P2101-00",
+      "target_qty": 620,
+      "good_qty": 612,
+      "defect_qty": 8,
+      "anomalies": ""
+    },
+    {
+      "date": "2026-08-21",
+      "emp_no": "EMP002",
+      "reporter": "윤서준 사원 (품질보증팀)",
+      "line_no": "L02",
+      "part_no": "P3101-00",
+      "target_qty": 580,
+      "good_qty": 566,
+      "defect_qty": 14,
+      "anomalies": "M-201 지그 마모로 구성 부품 조립 누락 6건 발생. 지그 교체 후 정상 가동 확인."
+    }
+  ]
+}

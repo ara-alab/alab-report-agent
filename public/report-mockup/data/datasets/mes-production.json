@@ -1,0 +1,95 @@
+{
+  "id": "mes-production",
+  "system": "MES",
+  "name": "생산 실적",
+  "table": "pp300",
+  "period": {
+    "from": "2026-07-01",
+    "to": "2026-07-31",
+    "label": "2026년 7월"
+  },
+  "filter": "완료 상태 작업지시 · 라인 A~C",
+  "row_count": 1284,
+  "doc": {
+    "title": "7월 생산 실적 분석 보고",
+    "name": "2026년 7월 생산 실적 분석",
+    "no_prefix": "RPT-PRD",
+    "group_title": "라인별"
+  },
+  "demo": {
+    "ask": "「생산 실적」 데이터로 7월 실적 보고서를 만들어 줘. 라인별로 집계하고 총괄 지표를 앞에 정리해 줘."
+  },
+  "fields": [
+    {"key": "date", "label": "작업일자", "align": "c"},
+    {"key": "line_no", "label": "라인", "align": "c"},
+    {"key": "part_no", "label": "품번", "align": "c"},
+    {"key": "target_qty", "label": "지시수량", "align": "n"},
+    {"key": "good_qty", "label": "양품수량", "align": "n"},
+    {"key": "defect_qty", "label": "불량수량", "align": "n"}
+  ],
+  "group_by": "line_no",
+  "sum": ["target_qty", "good_qty", "defect_qty"],
+  "derived": [
+    {
+      "label": "달성률",
+      "align": "c",
+      "kind": "ratio",
+      "num": "good_qty",
+      "den": ["target_qty"],
+      "scale": 100,
+      "dec": 1,
+      "unit": "%"
+    },
+    {
+      "label": "불량률",
+      "align": "c",
+      "kind": "ratio",
+      "num": "defect_qty",
+      "den": ["target_qty"],
+      "scale": 1000000,
+      "dec": 0,
+      "unit": "PPM"
+    }
+  ],
+  "headline": [
+    {"label": "총 지시수량", "kind": "sum", "key": "target_qty", "unit": "EA"},
+    {"label": "총 양품수량", "kind": "sum", "key": "good_qty", "unit": "EA", "tone": "good"},
+    {"label": "총 불량수량", "kind": "sum", "key": "defect_qty", "unit": "EA", "tone": "bad"},
+    {
+      "label": "평균 달성률",
+      "kind": "ratio",
+      "num": "good_qty",
+      "den": ["target_qty"],
+      "scale": 100,
+      "dec": 1,
+      "unit": "%"
+    },
+    {
+      "label": "종합 불량률",
+      "kind": "ratio",
+      "num": "defect_qty",
+      "den": ["target_qty"],
+      "scale": 1000000,
+      "dec": 0,
+      "unit": "PPM",
+      "tone": "warn"
+    }
+  ],
+  "rows": [
+    {"date": "2026-07-06", "line_no": "L01", "part_no": "P2101-00", "target_qty": 500, "good_qty": 492, "defect_qty": 8, "note": ""},
+    {"date": "2026-07-06", "line_no": "L02", "part_no": "P3101-00", "target_qty": 480, "good_qty": 470, "defect_qty": 10, "note": ""},
+    {"date": "2026-07-06", "line_no": "L03", "part_no": "P2101-00", "target_qty": 450, "good_qty": 432, "defect_qty": 18, "note": "가공기 진동 상한 초과로 치수 불량 발생"},
+    {"date": "2026-07-13", "line_no": "L01", "part_no": "P2101-00", "target_qty": 620, "good_qty": 612, "defect_qty": 8, "note": ""},
+    {"date": "2026-07-13", "line_no": "L02", "part_no": "P3101-00", "target_qty": 520, "good_qty": 508, "defect_qty": 12, "note": ""},
+    {"date": "2026-07-13", "line_no": "L03", "part_no": "P2101-00", "target_qty": 470, "good_qty": 455, "defect_qty": 15, "note": ""},
+    {"date": "2026-07-20", "line_no": "L01", "part_no": "P2101-00", "target_qty": 580, "good_qty": 571, "defect_qty": 9, "note": ""},
+    {"date": "2026-07-20", "line_no": "L02", "part_no": "P3101-00", "target_qty": 560, "good_qty": 549, "defect_qty": 11, "note": ""},
+    {"date": "2026-07-20", "line_no": "L03", "part_no": "P2101-00", "target_qty": 430, "good_qty": 409, "defect_qty": 21, "note": "후처리기 압력 편차로 일시 점검 · 필터 선제 교체"},
+    {"date": "2026-07-27", "line_no": "L01", "part_no": "P2101-00", "target_qty": 540, "good_qty": 534, "defect_qty": 6, "note": ""},
+    {"date": "2026-07-27", "line_no": "L02", "part_no": "P3101-00", "target_qty": 500, "good_qty": 487, "defect_qty": 13, "note": "M-201 지그 마모로 조립 누락 발생 · 지그 교체 후 정상"},
+    {"date": "2026-07-27", "line_no": "L03", "part_no": "P2101-00", "target_qty": 460, "good_qty": 447, "defect_qty": 13, "note": ""},
+    {"date": "2026-07-30", "line_no": "L01", "part_no": "P2101-00", "target_qty": 600, "good_qty": 593, "defect_qty": 7, "note": ""},
+    {"date": "2026-07-30", "line_no": "L02", "part_no": "P3101-00", "target_qty": 540, "good_qty": 531, "defect_qty": 9, "note": ""},
+    {"date": "2026-07-30", "line_no": "L03", "part_no": "P2101-00", "target_qty": 440, "good_qty": 425, "defect_qty": 15, "note": ""}
+  ]
+}
