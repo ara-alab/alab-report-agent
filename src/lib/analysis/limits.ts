@@ -72,7 +72,17 @@ export async function checkLimits(raw: Record<string, unknown>, account: Account
       GROUP BY entity, item`,
     whereParams,
   );
-  const [sum, itemRows] = await Promise.all([summary, items]);
+  // 대상·항목·일자별 이탈 분포 — 이탈이 있는 일자만, 일 단위 실적과 대조하는 영향 분석 근거
+  const days = roQuery(
+    `SELECT entity, item, DATE(ts) AS day, SUM(bad) AS violations, MIN(CASE WHEN bad THEN ts END) AS first_at, MAX(CASE WHEN bad THEN ts END) AS last_at
+       FROM (SELECT ${src.entity} AS entity, ${r.item} AS item, ${src.time} AS ts, ${bad} AS bad
+               FROM ${src.from} JOIN ${q(r.table)} ${r.alias} ON ${r.on} ${specJoin}
+              WHERE ${where}) x
+      GROUP BY entity, item, day HAVING SUM(bad) > 0
+      ORDER BY entity, item, day`,
+    whereParams,
+  );
+  const [sum, itemRows, dayRows] = await Promise.all([summary, items, days]);
 
   const rows = sum.rows.map((row) => {
     const entity = String(row.entity);
@@ -92,6 +102,9 @@ export async function checkLimits(raw: Record<string, unknown>, account: Account
           max: hit?.max_value ?? null,
           firstViolationAt: hit?.first_at ?? null,
           lastViolationAt: hit?.last_at ?? null,
+          violationDays: dayRows.rows
+            .filter((d) => String(d.entity) === entity && d.item === x.item)
+            .map((d) => ({ date: String(d.day), violations: Number(d.violations), firstAt: d.first_at, lastAt: d.last_at })),
         };
       });
     return {
@@ -114,7 +127,7 @@ export async function checkLimits(raw: Record<string, unknown>, account: Account
     specs,
     invalidSpecs,
     rows,
-    truncated: sum.truncated || itemRows.truncated,
-    elapsedMs: Math.max(specRows.elapsedMs, sum.elapsedMs, itemRows.elapsedMs),
+    truncated: sum.truncated || itemRows.truncated || dayRows.truncated,
+    elapsedMs: Math.max(specRows.elapsedMs, sum.elapsedMs, itemRows.elapsedMs, dayRows.elapsedMs),
   };
 }

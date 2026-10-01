@@ -57,7 +57,7 @@ export function analysisTools(account: Account): AnalysisTool[] {
     tools.push({
       name: "check_limits",
       description:
-        "기간 내 측정값을 규격 테이블의 하한·상한과 대조합니다. 대상별 로그·경보 건수, 규격 이탈 항목(한계값·이탈 건수·최소/최대·최초/최종 이탈 시각), 규격 이탈로 설명되지 않는 경보 건수를 반환합니다. 경보·이상의 원인 항목은 이 결과로 판단합니다.",
+        "기간 내 측정값을 규격 테이블의 하한·상한과 대조합니다. 대상별 로그·경보 건수, 규격 이탈 항목(한계값·이탈 건수·최소/최대·최초/최종 이탈 시각·이탈 일자별 건수와 시각), 규격 이탈로 설명되지 않는 경보 건수를 반환합니다. 경보·이상의 원인 항목은 이 결과로 판단합니다.",
       input_schema: {
         type: "object",
         properties: { ...periodProps, ...filterProps(Object.entries(LIMIT_SOURCE.filters)) },

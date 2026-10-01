@@ -98,13 +98,14 @@ const DEFECT_DESC = {
 
 // 이상 사례 — 보고서가 찾아내야 할 특이사항, 항목 추가로 확장
 // sensor: 지정 시각의 측정 항목 범위와 설비 상태(미지정 시 RUN)
+// desc: 불량 현상만 기술 — 원인은 측정값·규격 대조로만 드러나게 함
 const SCENARIOS = [
   {
     id: "humidity-appearance",
     eqm: "M-101", from: "2026-08-26", to: "2026-08-27",
     mainDefectRate: [0.028, 0.034], defectMix: { NG03: 8, NG01: 1, NG04: 1 },
     sensor: { item: "HUM", range: [62, 68], hours: [10, 11, 12, 13, 14] },
-    desc: { NG03: "작업장 습도 상승(60% 초과) 구간 표면 얼룩 다발" },
+    desc: { NG03: "표면 얼룩·변색 다발" },
   },
   {
     id: "post-pressure-stop",
@@ -117,7 +118,7 @@ const SCENARIOS = [
     eqm: "M-201", from: "2026-09-22", to: "2026-09-24",
     mainDefectRate: [0.042, 0.058], defectMix: { NG01: 7, NG02: 2, NG04: 1 },
     sensor: { item: "VIB", range: [8.0, 11.0], hours: [9, 10, 13, 14, 15], status: "ALARM" },
-    desc: { NG01: "설비 진동 상승(7.1mm/s 초과) 구간 치수 불량 급증" },
+    desc: { NG01: "가공 치수 공차 이탈 급증" },
   },
 ];
 
