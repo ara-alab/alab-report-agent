@@ -245,6 +245,12 @@ export async function templateCatalog(account: Account) {
 }
 
 // 기안 — 오류가 하나라도 있으면 초안 없이 오류 목록으로 실패, 필수 키 누락은 경고로 초안 생성
+// 저장 보고서 지면 — 저장된 채움 값으로 서식 재렌더, 조회 재실행 없음
+export async function renderSaved(templateId: string, fills: Fills) {
+  const t = await getTemplate(templateId);
+  return t ? renderTemplate(await templateSource(t), t.keys, fills) : null;
+}
+
 export async function draftReport(input: Record<string, unknown>, account: Account, cache: RunCache): Promise<Draft> {
   const t = await getTemplate(String(input.template ?? ""));
   if (!t) throw new DraftError(`알 수 없는 서식입니다: ${String(input.template)} — recommend_templates 결과의 id 를 쓰세요`);

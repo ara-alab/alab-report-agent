@@ -3002,7 +3002,25 @@
         // 시작 화면에선 대화 로그가 감춰져 있어 안내를 쌓지 않음 — 칩 표기로 충분
         if (docOn) pushChat(signer() + ' 계정으로 전환했습니다. 이후 대화와 새로 만드는 문서에 이 계정이 적용됩니다.', false);
       });
-      AlabAccount.load().catch(function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
+      AlabAccount.load().then(openSavedReport, function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
+    }
+    // 임시 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 목록 화면 연동 전 확인용
+    function openSavedReport() {
+      var q = new URLSearchParams(location.search);
+      var id = q.get('report');
+      if (!id) return;
+      if (q.get('account')) AlabAccount.select(q.get('account'));
+      var acct = AlabAccount.current();
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
+        if (!j.html) throw new Error('서식을 찾을 수 없습니다');
+        if (!docOn) showDoc(true);
+        docPage.innerHTML = j.html;
+        setDraftPage(true);
+        applyZoom();
+        if (docnameEl) docnameEl.textContent = j.report.title;
+        setDocPages([j.report.title]);
+        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo);
+      }).catch(function (err) { showToast('보고서를 불러오지 못했습니다: ' + err.message); });
     }
     // 드로어 전송 — 시작 화면에선 「대화로 시작」과 같은 경로로 빈 지면부터 염
     function sendDrawer() {

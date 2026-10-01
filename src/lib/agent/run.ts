@@ -25,6 +25,14 @@ function appendNote(messages: Anthropic.MessageParam[], text: string) {
   tail.content = [...blocks, { type: "text", text }];
 }
 
+// 프롬프트 캐시 중단점 — 마지막 발화의 끝 블록에 지정, 단계마다 대화 끝으로 이동해 이전 단계까지 재사용
+function withCacheTail(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const tail = messages[messages.length - 1];
+  const blocks = typeof tail.content === "string" ? [{ type: "text" as const, text: tail.content }] : tail.content;
+  const last = { ...blocks[blocks.length - 1], cache_control: { type: "ephemeral" } } as Anthropic.ContentBlockParam;
+  return [...messages.slice(0, -1), { ...tail, content: [...blocks.slice(0, -1), last] }];
+}
+
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 // 모델 스트림 생성 — 기본은 API 호출, 개발 검증에서 재생 스트림으로 교체
@@ -32,7 +40,8 @@ export type OpenStream = (params: Anthropic.MessageStreamParams) => MessageStrea
 const openApiStream: OpenStream = (params) => getAnthropic().messages.stream(params, aiRequestOptions());
 
 export async function runAgent(route: string, account: Account, turns: ChatTurn[], line: (value: unknown) => void, openStream: OpenStream = openApiStream) {
-  const system = await systemPrompt(account);
+  // 시스템 프롬프트 캐시 — tool 정의와 시스템 프롬프트 접두를 요청 내 단계 간 재사용
+  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: await systemPrompt(account), cache_control: { type: "ephemeral" } }];
   const tools = buildTools(account);
   const messages: Anthropic.MessageParam[] = turns.map((t) => ({ role: t.role, content: t.content }));
   const sources = new Set<string>();
@@ -52,7 +61,7 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
     const partial = new Map<number, { name: string; json: string }>();
     const message = await withPremiumModel((model) =>
       consumeAiStream(
-        openStream({ model, max_tokens: MAX_TOKENS, system, messages, tools, tool_choice: final ? { type: "none" } : { type: "auto" } }),
+        openStream({ model, max_tokens: MAX_TOKENS, system, messages: withCacheTail(messages), tools, tool_choice: final ? { type: "none" } : { type: "auto" } }),
         route,
         model,
         (event) => {
