@@ -27,12 +27,13 @@ npm run dev
 | `public/report-mockup/index.html` | 편집기 셸 목업 — 스타일·마크업·동작 자족형 단일 파일 |
 | `public/report-mockup/data/` | 흐름 시연용 더미 데이터 — 목업이 `fetch` 로 읽음 |
 | `public/report-mockup/data/datasets/` | 사내 DB 표 카탈로그와 표 본문 — 좌측 레일·데이터 선택 창의 원천 |
-| `public/report-mockup/data/templates/` | 보고서 서식과 서식 카탈로그 — `{{키}}` 플레이스홀더를 데이터로 치환 |
+| `public/report-mockup/data/templates/` | 보고서 서식과 서식 레지스트리(`index.json`) — 서식별 키 선언·문서번호 접두어, Agent 서식은 `agent/` |
 | `public/report-mockup/fonts/` | 문서 폰트(나눔 계열) — 원본 `@font-face` 선언 대응 |
 | `public/report-mockup/js/` | 목업 서버 연동 모듈 — 신규 화면 로직 분리 위치 |
 | `src/app/api/health/` | 서버 상태 확인 — DB 연결·LLM 키 설정 여부 |
 | `src/app/api/agent/` | Agent 대화 진입점 — 계정 검증, tool 호출·결과·출처를 NDJSON 스트림으로 중계 |
 | `src/app/api/accounts/` | 샘플 계정 목록 |
+| `src/app/api/reports/` | 보고서 목록·저장·단건 조회 — 계정별 조회 범위, 저장 시 문서번호 발번 |
 | `src/app/api/dev/` | 개발 확인용 route — 조회 함수·카탈로그·SQL·분석 tool·LLM 스트림, 운영 빌드에선 404 |
 | `src/lib/agent/` | Agent tool 루프 — 계정 범위 tool 구성·실행, 카탈로그 기반 시스템 프롬프트, 호출 상한 |
 | `src/lib/calendar.ts` | 날짜 관행 — 월 주차(KS X ISO 8601) 계산과 `resolve_week` tool |
@@ -41,8 +42,10 @@ npm run dev
 | `src/lib/queries/` | 조회 함수 등록부·사전 정의 조회 4종·SQL 가드·`run_sql` |
 | `src/lib/catalog/` | 스키마 카탈로그 — DB 구조와 테이블·컬럼 설명 결합, KPI 공식·센서 규격 원천 정의 |
 | `src/lib/analysis/` | 분석 tool — `analyze_kpi` KPI·직전 기간 증감 계산, `check_limits` 규격 이탈 판정 |
+| `src/lib/drafting/` | 서식 로더·렌더러 — 키 종류별 구조화 채움 값 검증·이스케이프 기입, 시스템·계정 키 |
+| `src/lib/reports/` | 보고서 저장소 — `alab_report` 스키마의 보고서·수치 저장, 문서번호 발번 |
 | `src/lib/accounts/` | 샘플 계정 3종 — 기안자·결재선·기본 서식·조회 가능 테이블 |
-| `db/init/` | DB 초기화 SQL — 스키마·기준정보·거래 데이터·조회 전용 계정 |
+| `db/init/` | DB 초기화 SQL — 스키마·기준정보·거래 데이터·조회 전용 계정·보고서 저장소(`alab_report`, 앱 계정 전용) |
 | `db/checks.sql` | 데이터 불변식 검사 |
 | `scripts/db/` | 가상 데이터 생성기 |
 | `scripts/check-sql-guard.mjs` | SQL 가드 회귀 검사 사례 |

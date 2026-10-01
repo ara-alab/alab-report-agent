@@ -18,6 +18,7 @@
   "templates": [
     {
       "id": "weekly-summary",
+      "docPrefix": "RPT-WKL",
       "name": "주간 생산실적 보고",
       "file": "data/templates/agent/weekly.html",
       "purpose": "한 주간의 생산 지시·양품·불량 실적을 일자별로 집계하고 품질 이상 이벤트와 조치를 정리",
@@ -31,6 +32,7 @@
     },
     {
       "id": "production-brief",
+      "docPrefix": "RPT-PRD",
       "name": "생산 실적 분석 보고",
       "file": "data/templates/agent/brief.html",
       "purpose": "지정 기간의 생산 실적 데이터를 KPI와 그룹별 집계로 분석하고 특이 항목을 정리",
@@ -46,6 +48,7 @@
     },
     {
       "id": "equipment-brief",
+      "docPrefix": "RPT-EQP",
       "name": "설비 가동 현황 보고",
       "file": "data/templates/agent/brief.html",
       "purpose": "지정 기간의 설비 가동·측정 로그를 설비별로 집계하고 경보·특이 항목을 정리",
@@ -61,6 +64,7 @@
     },
     {
       "id": "equipment-quality-impact",
+      "docPrefix": "RPT-EQI",
       "name": "설비 이상·품질 영향 보고",
       "file": "data/templates/agent/impact.html",
       "purpose": "설비 측정값의 규격 이탈을 판정하고 이상 구간의 생산·품질 실적 영향과 원인·조치를 정리",

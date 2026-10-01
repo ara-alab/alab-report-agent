@@ -13,6 +13,8 @@ export type KeySpec = { kind: KeyKind; by: KeySource; label: string; required: b
 export type TemplateDef = {
   id: string;
   name: string;
+  // 문서번호 접두어 — 접두어-작성일-일련번호 형식
+  docPrefix: string;
   file: string;
   purpose: string;
   sections: string[];
@@ -46,6 +48,7 @@ async function loadRegistry(): Promise<Registry> {
   checkKeys("common", raw.common);
   for (const t of raw.templates) {
     checkKeys(t.id, t.keys);
+    if (!/^[A-Z][A-Z0-9-]{1,19}$/.test(t.docPrefix ?? "")) throw new Error(`${t.id}: 문서번호 접두어가 올바르지 않습니다`);
     const dup = Object.keys(t.keys).filter((k) => k in raw.common);
     if (dup.length) throw new Error(`${t.id}: 공통 키와 겹치는 키가 있습니다: ${dup.join(", ")}`);
   }
