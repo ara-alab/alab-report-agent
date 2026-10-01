@@ -6,9 +6,17 @@
     "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:guard": "node scripts/check-sql-guard.mjs",
+    "db:seed": "node scripts/db/generate-seed.mjs",
+    "db:up": "docker compose -f compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f compose.dev.yml down",
+    "db:reset": "docker compose -f compose.dev.yml down -v && docker compose -f compose.dev.yml up -d --wait",
+    "db:check": "docker compose -f compose.dev.yml exec -T db sh -c 'mariadb -uroot -p\"$MARIADB_ROOT_PASSWORD\" \"$MARIADB_DATABASE\"' < db/checks.sql"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.94.0",
+    "mysql2": "^3.24.4",
     "next": "16.3.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"

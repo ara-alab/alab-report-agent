@@ -1024,6 +1024,8 @@
   /* 사용자 발화 — 우측 정렬 + 강조 약 배경으로 화자 구분 */
   .chat-msg.me { align-items: flex-end; }
   .chat-msg.me .bubble { background: var(--accent-weak); border-color: var(--accent); max-width: 92%; }
+  .chat-msg .bubble.agent { white-space: normal; }
+  .chat-msg .bubble.agent.err { color: var(--ink-muted); }
   /* 대화 내 선택지 — 어시스턴트가 제시한 다음 단계, 카드 하나가 곧 진행 버튼 */
   .chat-opts { display: flex; flex-direction: column; gap: 6px; }
   .chat-opt { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 9px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); text-align: left; cursor: pointer; }
@@ -1395,11 +1397,37 @@
 
   /* 로그인 계정 칩 — 좁게 모드에선 이름·부서를 접고 이니셜만 남김 */
   .tb-user { display: flex; align-items: center; gap: 7px; padding: 2px 2px 2px 0; }
-  .tb-user .ava { flex: 0 0 auto; width: 27px; height: 27px; border-radius: 50%; background: var(--accent-strong); color: var(--on-accent); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .tb-user .ava, .acct-opt .ava { flex: 0 0 auto; width: 27px; height: 27px; border-radius: 50%; background: var(--accent-strong); color: var(--on-accent); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .tb-user .un { display: flex; flex-direction: column; line-height: 1.25; }
   .tb-user .un .n { font-size: 12.5px; color: var(--ink); }
   .tb-user .un .d { font-size: 11px; color: var(--ink-faint); }
   .app.narrow .tb-user .un { display: none; }
+  /* 계정 전환 — 칩 클릭으로 샘플 계정 메뉴 */
+  .tb-acct { position: relative; display: flex; }
+  .tb-user { cursor: pointer; border-radius: 8px; }
+  .tb-user:hover .un .n, .tb-user:focus-visible .un .n { color: var(--accent-strong); }
+  .acct-menu { display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 80; min-width: 250px; padding: 6px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--shadow); cursor: default; }
+  .acct-menu.open { display: block; }
+  .acct-opt { display: grid; grid-template-columns: auto 1fr; gap: 1px 9px; align-items: center; width: 100%; padding: 7px 8px;
+    border: none; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; color: var(--ink); }
+  .acct-opt:hover { background: var(--surface-2); }
+  .acct-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .acct-opt.on { background: var(--accent-weak); }
+  .acct-opt .ava { grid-row: span 2; }
+  .acct-opt .n { font-size: 13px; font-weight: 600; }
+  .acct-opt .d { font-size: 11.5px; color: var(--ink-muted); }
+  /* Agent 조회 진행·출처 — 답변 말풍선 위아래 보조 정보 */
+  .chat-steps { display: flex; flex-direction: column; gap: 2px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-muted); }
+  .chat-steps:empty { display: none; }
+  .chat-step.err { color: var(--danger); }
+  .chat-step.chat-note { font-family: inherit; font-size: 12.5px; color: var(--ink-faint); white-space: pre-wrap; }
+  /* 답변 최소 서식 — 줄은 렌더러가 블록으로 분리 */
+  .bubble.agent .md-h { font-weight: 700; margin: 6px 0 2px; }
+  .bubble.agent .md-gap { height: .6em; }
+  .bubble.agent ul { margin: 2px 0; padding-left: 18px; }
+  .chat-src { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); word-break: break-all; }
+  .chat-src:empty { display: none; }
 
   /* 서식 추천 창 — 요청 문장 + 추천 카드 격자, 카드 선택 즉시 생성 */
   .tpl-body { flex: 1; min-height: 0; overflow-y: auto; padding: 17px 18px; display: flex; flex-direction: column; gap: 14px; }
@@ -1412,11 +1440,9 @@
   .tpl-card:hover { border-color: var(--accent); background: var(--surface-2); }
   .tpl-card .tc-head { display: flex; align-items: baseline; gap: 8px; }
   .tpl-card .tc-nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 650; color: var(--ink); }
-  .tpl-card .tc-fit { flex: 0 0 auto; font-family: var(--mono); font-size: 11.5px; color: var(--accent-deep); background: var(--accent-weak); border-radius: 4px; padding: 1px 6px; }
   .tpl-card .tc-why { font-size: 12px; line-height: 1.5; color: var(--ink-muted); }
   .tpl-card .tc-secs { display: flex; flex-wrap: wrap; gap: 4px; }
   .tpl-card .tc-secs .sec { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
-  .tpl-card .tc-src { font-size: 11.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tpl-card .tc-go { margin-top: auto; font-size: 12.5px; font-weight: 600; color: var(--accent-deep); }
   /* 자동 서식 카드 — 추천에 맞는 서식이 없을 때의 갈래 */
   .tpl-card.auto { border-style: dashed; align-items: flex-start; justify-content: center; gap: 7px; }
@@ -1475,10 +1501,13 @@
       <span class="tb-div"></span>
       <button class="iconbtn btn-primary" id="exportBtn" type="button" title="내보내기" data-soon><span class="g">⭳</span> 내보내기 <span class="soon">준비중</span></button>
       <span class="tb-div"></span>
-      <!-- 로그인 계정 — 데모 사용자 1인, 생성 문서의 기안자 출처 -->
-      <span class="tb-user" id="tbUser" title="로그인 계정 — 생성 문서의 기안자로 사용">
-        <span class="ava"></span>
-        <span class="un"><span class="n"></span><span class="d"></span></span>
+      <!-- 로그인 계정 — 샘플 계정 전환, 생성 문서의 기안자·Agent 조회 범위 출처 -->
+      <span class="tb-acct" id="tbAcct">
+        <span class="tb-user" id="tbUser" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="acctMenu" title="로그인 계정 — 클릭해 샘플 계정 전환">
+          <span class="ava"></span>
+          <span class="un"><span class="n"></span><span class="d"></span></span>
+        </span>
+        <span class="acct-menu" id="acctMenu" role="menu" aria-label="샘플 계정"></span>
       </span>
     </div>
 
@@ -1611,9 +1640,9 @@
           </div>
           <div class="chat-compose">
             <div class="chat-quick">
-              <button class="chat-chip" type="button">데이터 요약</button>
-              <button class="chat-chip" type="button">템플릿 추천</button>
-              <button class="chat-chip" type="button">문단 다시 쓰기</button>
+              <button class="chat-chip" type="button" data-soon>데이터 요약</button>
+              <button class="chat-chip" type="button" data-soon>템플릿 추천</button>
+              <button class="chat-chip" type="button" data-soon>문단 다시 쓰기</button>
             </div>
             <div class="chat-box">
               <textarea id="chatInput" rows="2" placeholder="보고서 작성 지시를 입력하세요"></textarea>
@@ -1689,7 +1718,7 @@
   </div>
 </div>
 
-<!-- 서식 추천 창 — 요청 문장에 맞는 서식을 고르면 필요한 데이터를 붙여 생성 -->
+<!-- 서식 선택 창 — 요청을 적고 서식을 고르면 해당 서식의 빈 문서를 열고 요청을 Agent에 전달 -->
 <div class="modal-mask" id="tplMask">
   <div class="lib" id="tplDlg" style="height:auto;max-height:88vh">
     <div class="lib-head">
@@ -1699,10 +1728,10 @@
     <div class="tpl-body">
       <div class="tpl-ask">
         <span class="lb">요청</span>
-        <div class="chat-box"><textarea id="tplInput" rows="2" readonly></textarea></div>
+        <div class="chat-box"><textarea id="tplInput" rows="2" placeholder="예: 지난주 라인별 생산 실적과 품질 이상을 보고용으로 정리해 줘"></textarea></div>
       </div>
       <div class="merge-head">
-        <span class="merge-sub">이 요청에 맞는 서식입니다. 고르면 필요한 데이터를 연결해 바로 채웁니다.</span>
+        <span class="merge-sub">서식을 고르면 빈 문서를 열고 요청을 Agent에 전달합니다.</span>
         <span class="merge-count" id="tplCount"></span>
       </div>
       <div class="tpl-grid" id="tplList"></div>
@@ -1737,6 +1766,9 @@
 <!-- 토스트 — 미구현 동작의 안내 표시 -->
 <div class="toast" id="toast"></div>
 
+<!-- 서버 연동 모듈 — 신규 로직은 js/ 하위 파일로 분리 -->
+<script src="js/api.js"></script>
+<script src="js/account.js"></script>
 <script>
   (function () {
     var app = document.getElementById('app');
@@ -2431,7 +2463,9 @@
     var docnameEl = document.getElementById('docname');
     var basePageNames = pageThumbs.map(function (t) { return t.querySelector('.pname').textContent; });
     var baseDocName = docnameEl ? docnameEl.textContent : '';
+    var docOn = false;   // 작성 단계 여부 — 드로어 전송 경로·전환 안내 노출 기준
     function showDoc(on) {
+      docOn = on;
       if (startPanel) startPanel.style.display = on ? 'none' : '';
       if (stageEl) stageEl.style.display = on ? '' : 'none';
       // 페이지 목록·대화 로그도 문서 유무를 따름 — 시작 화면 단계엔 표본 미노출
@@ -2453,6 +2487,9 @@
       if (docnameEl) docnameEl.textContent = baseDocName;
       if (chatLogEl) Array.prototype.slice.call(chatLogEl.querySelectorAll('.chat-msg[data-stage]'))
         .forEach(function (m) { m.remove(); });
+      // Agent 대화 이력도 문서와 함께 폐기, 진행 중 응답은 중단
+      if (agentAbort) agentAbort.abort();
+      agentHistory = [];
     }
     showDoc(false);
     // 시작 카드 세 갈래 — 각자 전용 창을 염, 대화 갈래는 카드 밖 입력란 소관
@@ -2464,17 +2501,15 @@
         else if (kind === 'template') openTpl();
       });
     });
-    // 대화로 시작 — 입력란이 진입 수단, 빈 입력은 예시 문장으로 대신함
+    // 대화로 시작 — 입력란이 진입 수단, 빈 입력은 전송 없이 입력란 포커스
     var startInput = document.getElementById('startInput');
     var startSend = document.getElementById('startSend');
     function sendStart() {
-      var v = startInput ? startInput.value : '';
-      if (startInput) startInput.value = '';
-      startAsk(v);
+      if (startAsk(startInput ? startInput.value : '') && startInput) startInput.value = '';
     }
     if (startSend) startSend.addEventListener('click', sendStart);
     if (startInput) startInput.addEventListener('keydown', function (ev) {
-      if (ev.key !== 'Enter' || ev.shiftKey) return;
+      if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing) return;
       ev.preventDefault();   // 줄바꿈 대신 전송 — 줄바꿈은 Shift+Enter 소관
       sendStart();
     });
@@ -2485,9 +2520,9 @@
       b.addEventListener('click', function () { showToast('준비 중입니다'); });
     });
 
-    // ── 데모 사용자 — 편집기 로그인 사용자, 이 데모가 만드는 모든 문서의 기안자
-    // 검토자 직급은 결재란 표기에 쓰지 않음 — 계정 설정값으로만 보유
-    var demoUser = { name: '김도현', title: '과장', dept: '생산기술부', reviewer: '이상훈', reviewerTitle: '부장' };
+    // ── 데모 사용자 — 선택한 샘플 계정, 이후 생성하는 문서의 기안자
+    // 서버 계정 목록 적재 전·실패 시 기본값 유지, 검토자 직급은 결재란 표기에 쓰지 않음 — 계정 설정값으로만 보유
+    var demoUser = { id: null, name: '김도현', title: '과장', dept: '생산기술부', reviewer: '이상훈', reviewerTitle: '부장' };
     var demoAudience = '공장장(소장)';   // 보고 대상 — 데이터에 없는 값이라 지시문 소관
 
     // 조사 「로/으로」 — 받침 없음·ㄹ 받침은 「로」, 그 외는 「으로」
@@ -2505,13 +2540,73 @@
     }
 
     // 타이틀바 계정 — 기안자 정보의 출처를 화면에 드러냄
-    (function () {
-      var el = document.getElementById('tbUser');
-      if (!el) return;
-      el.querySelector('.ava').textContent = demoUser.name.charAt(0);
-      el.querySelector('.n').textContent = demoUser.name + ' ' + demoUser.title;
-      el.querySelector('.d').textContent = demoUser.dept;
-    })();
+    var tbAcctEl = document.getElementById('tbAcct');
+    var tbUserEl = document.getElementById('tbUser');
+    var acctMenuEl = document.getElementById('acctMenu');
+    function renderUser() {
+      if (!tbUserEl) return;
+      tbUserEl.querySelector('.ava').textContent = demoUser.name.charAt(0);
+      tbUserEl.querySelector('.n').textContent = demoUser.name + ' ' + demoUser.title;
+      tbUserEl.querySelector('.d').textContent = demoUser.dept;
+    }
+    renderUser();
+
+    // 계정 메뉴 — 목록은 서버 계정 설정, 현재 계정 강조
+    function renderAcctMenu() {
+      if (!acctMenuEl || !window.AlabAccount) return;
+      var cur = AlabAccount.current();
+      acctMenuEl.innerHTML = '';
+      AlabAccount.list().forEach(function (a) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'acct-opt' + (cur && cur.id === a.id ? ' on' : '');
+        b.tabIndex = -1;   // 메뉴 안 이동은 화살표 소관, Tab 은 메뉴를 벗어남
+        b.setAttribute('role', 'menuitemradio');
+        b.setAttribute('aria-checked', cur && cur.id === a.id ? 'true' : 'false');
+        b.innerHTML = '<span class="ava"></span><span class="n"></span><span class="d"></span>';
+        b.querySelector('.ava').textContent = a.name.charAt(0);
+        b.querySelector('.n').textContent = a.name + ' ' + a.title + (a.role === 'reviewer' ? ' · 검토자' : '');
+        b.querySelector('.d').textContent = a.dept + ' · ' + a.duty;
+        b.addEventListener('click', function () {
+          setAcctOpen(false, true);
+          AlabAccount.select(a.id);
+        });
+        acctMenuEl.appendChild(b);
+      });
+    }
+    // 메뉴 열림 — 열면 현재 계정에 포커스, 키보드로 닫으면 계정 칩으로 포커스 복귀
+    function setAcctOpen(open, refocus) {
+      if (open) {
+        if (!window.AlabAccount || !AlabAccount.list().length) return;
+        renderAcctMenu();
+      }
+      acctMenuEl.classList.toggle('open', open);
+      tbUserEl.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        var first = acctMenuEl.querySelector('.acct-opt.on') || acctMenuEl.querySelector('.acct-opt');
+        if (first) first.focus();
+      } else if (refocus) tbUserEl.focus();
+    }
+    if (tbAcctEl && tbUserEl && acctMenuEl) {
+      tbUserEl.addEventListener('click', function () { setAcctOpen(!acctMenuEl.classList.contains('open')); });
+      tbUserEl.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'ArrowDown') { ev.preventDefault(); setAcctOpen(true); }
+        else if (ev.key === 'Escape') setAcctOpen(false);
+      });
+      // 메뉴 키보드 — 위아래 순환 이동, Home·End, Escape·Tab 은 닫고 계정 칩으로 복귀
+      acctMenuEl.addEventListener('keydown', function (ev) {
+        var opts = Array.prototype.slice.call(acctMenuEl.querySelectorAll('.acct-opt'));
+        var i = opts.indexOf(document.activeElement);
+        var next = null;
+        if (ev.key === 'ArrowDown') next = opts[(i + 1) % opts.length];
+        else if (ev.key === 'ArrowUp') next = opts[(i - 1 + opts.length) % opts.length];
+        else if (ev.key === 'Home') next = opts[0];
+        else if (ev.key === 'End') next = opts[opts.length - 1];
+        else if (ev.key === 'Escape' || ev.key === 'Tab') { ev.preventDefault(); setAcctOpen(false, true); return; }
+        if (next) { ev.preventDefault(); next.focus(); }
+      });
+      document.addEventListener('click', function (ev) { if (!tbAcctEl.contains(ev.target)) setAcctOpen(false); });
+    }
 
     // 모달 바깥 닫기 — 누른 지점과 뗀 지점이 모두 바깥일 때만, 내부에서 시작한 드래그는 무시
     function bindMaskClose(mask, close) {
@@ -2700,6 +2795,173 @@
       chatLogEl.appendChild(box);
       chatLogEl.scrollTop = chatLogEl.scrollHeight;
     }
+
+    // Agent 대화 — 드로어 입력을 선택 계정으로 서버 Agent 에 전송, 조회 진행·답변·출처를 스트림으로 표시
+    var chatInputEl = document.getElementById('chatInput');
+    var chatSendEl = document.getElementById('chatSend');
+    var agentHistory = [];   // 서버 전달용 완료 발화 목록 — 실패한 턴은 제외
+    var agentAbort = null;   // 진행 중 응답 중단 수단, 없으면 전송 가능
+    // 서버 대화 이력 한도와 같은 값 — 발화 수·발화 길이
+    var AGENT_MAX_TURNS = 20;
+    var AGENT_MAX_CHARS = 4000;
+    // 요청 길이 초과 안내 — 초과면 true, 화면 전환 전에 걸러 빈 지면만 남는 일을 막음
+    function askTooLong(text) {
+      if (text.length <= AGENT_MAX_CHARS) return false;
+      showToast('요청은 ' + AGENT_MAX_CHARS.toLocaleString() + '자 이내로 입력해 주세요');
+      return true;
+    }
+    // tool 화면 표기 — 목록에 없는 tool 은 이름 그대로
+    var TOOL_LABELS = {
+      query_production_summary: '생산실적 집계', query_defect_breakdown: '불량 유형 집계',
+      query_equipment_status: '설비 상태 집계', query_material_flow: '자재 수불 집계',
+      analyze_kpi: 'KPI 계산', check_limits: '규격 이탈 판정', resolve_week: '주차 기간 확인',
+      list_datasets: '데이터 목록 확인', describe_table: '테이블 구조 확인', run_sql: 'SQL 조회'
+    };
+    // 조회 진행 한 줄 — 도구·핵심 입력(기간·대상), 결과 도착 시 행 수 또는 오류 덧붙임
+    function stepText(ev) {
+      var inp = ev.input || {};
+      var bits = [];
+      if (inp.kpi) bits.push(inp.kpi);
+      if (inp.table) bits.push(inp.table);
+      if (inp.month) bits.push(inp.month);
+      if (inp.from || inp.to) bits.push((inp.from || '') + '~' + (inp.to || ''));
+      ['eqm', 'line', 'eqmType', 'part'].forEach(function (k) { if (inp[k]) bits.push(inp[k]); });
+      return '· ' + (TOOL_LABELS[ev.name] || ev.name) + (bits.length ? ' (' + bits.join(', ') + ')' : '');
+    }
+    // 결과 형태 한 마디 — KPI 는 합계/구분 수, 그 밖은 행 수
+    function resultText(ev, inp) {
+      if (!ev.ok) return ' → 오류, 입력 수정 후 재시도';
+      if (ev.name === 'analyze_kpi') return !inp.groupBy ? ' → 합계 산출' : ev.rowCount ? ' → ' + ev.rowCount + '개 구분' : ' → 데이터 없음';
+      return typeof ev.rowCount === 'number' ? ' → ' + ev.rowCount + '행' : ' → 완료';
+    }
+    function escHtml(s) {
+      return s.replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+    }
+    // 최소 서식 렌더링 — 제목·글머리 목록·굵게만 요소로 변환, 나머지는 이스케이프한 평문
+    function renderMd(text) {
+      var out = [];
+      var inList = false;
+      var inline = function (s) { return escHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); };
+      text.split('\n').forEach(function (line) {
+        var m = /^\s*[-*]\s+(.*)$/.exec(line);
+        if (m) {
+          if (!inList) { out.push('<ul>'); inList = true; }
+          out.push('<li>' + inline(m[1]) + '</li>');
+          return;
+        }
+        if (inList) { out.push('</ul>'); inList = false; }
+        m = /^\s*#{1,6}\s+(.*)$/.exec(line);
+        if (m) out.push('<div class="md-h">' + inline(m[1]) + '</div>');
+        else if (!line.trim()) out.push('<div class="md-gap"></div>');
+        else out.push('<div>' + inline(line) + '</div>');
+      });
+      if (inList) out.push('</ul>');
+      return out.join('');
+    }
+    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송
+    function sendAgentChat(textArg) {
+      var fromInput = typeof textArg !== 'string';
+      var text = fromInput ? (chatInputEl ? chatInputEl.value.trim() : '') : textArg.trim();
+      if (!text || agentAbort || !window.AlabApi || askTooLong(text)) return;
+      if (fromInput) chatInputEl.value = '';
+      pushChat(text, true);
+      pushChat('…', false);
+      var box = chatLogEl.lastElementChild;
+      var bubble = box.querySelector('.bubble');
+      bubble.classList.add('agent');
+      var steps = document.createElement('div');
+      steps.className = 'chat-steps';
+      box.insertBefore(steps, bubble);
+      var src = document.createElement('div');
+      src.className = 'chat-src';
+      box.appendChild(src);
+      var stepEls = {};
+      var stepInputs = {};
+      // 오래된 발화부터 덜어 한도 안으로, 첫 발화는 사용자 발화로 맞춤
+      var turns = agentHistory.concat([{ role: 'user', content: text }]);
+      while (turns.length > AGENT_MAX_TURNS || turns[0].role !== 'user') turns.shift();
+      var answer = '';   // 마지막 도구 호출 이후 본문 — 최종 답변 후보
+      var failed = null;
+      var ctrl = agentAbort = new AbortController();
+      var body = { messages: turns };
+      if (demoUser.id) body.account = demoUser.id;
+      AlabApi.stream('agent', body, function (ev) {
+        if (ev.type === 'delta') {
+          answer += ev.text;
+          bubble.innerHTML = renderMd(answer);
+        } else if (ev.type === 'tool_call') {
+          // 도구 호출 전 본문은 중간 안내로 진행 표시 줄에 이동
+          if (answer.trim()) {
+            var note = document.createElement('div');
+            note.className = 'chat-step chat-note';
+            note.textContent = answer.trim();
+            steps.appendChild(note);
+          }
+          answer = '';
+          bubble.textContent = '조회 중…';
+          var row = document.createElement('div');
+          row.className = 'chat-step';
+          row.textContent = stepText(ev);
+          stepEls[ev.id] = row;
+          stepInputs[ev.id] = ev.input || {};
+          steps.appendChild(row);
+        } else if (ev.type === 'tool_result') {
+          var el = stepEls[ev.id];
+          if (el) {
+            el.textContent += resultText(ev, stepInputs[ev.id] || {});
+            if (!ev.ok) el.classList.add('err');
+          }
+        } else if (ev.type === 'done') {
+          if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
+        } else if (ev.type === 'error') failed = ev.error;
+        chatLogEl.scrollTop = chatLogEl.scrollHeight;
+      }, ctrl.signal).then(function () {
+        if (failed || !answer) throw new Error(failed || '응답이 비어 있습니다.');
+        // 긴 답변은 이력에 앞부분만 보관 — 서버 발화 길이 한도 초과로 다음 요청이 거부되지 않게
+        var kept = answer.length > AGENT_MAX_CHARS ? answer.slice(0, AGENT_MAX_CHARS - 1) + '…' : answer;
+        agentHistory = turns.concat([{ role: 'assistant', content: kept }]);
+      }).catch(function (err) {
+        if (ctrl.signal.aborted) {
+          bubble.innerHTML = (answer ? renderMd(answer) + '<div class="md-gap"></div>' : '') + '<div>중단됨</div>';
+          return;
+        }
+        bubble.classList.add('err');
+        bubble.innerHTML = (answer ? renderMd(answer) + '<div class="md-gap"></div>' : '') + '<div>' + escHtml('⚠ ' + (err.message || '응답을 받지 못했습니다.')) + '</div>';
+      }).then(function () {
+        if (agentAbort === ctrl) agentAbort = null;
+      });
+    }
+
+    // 계정 전환 — 기안자 정보 교체, 조회 범위가 달라지므로 Agent 대화 이력 폐기
+    if (window.AlabAccount) {
+      AlabAccount.onChange(function (a, prev) {
+        demoUser.id = a.id;
+        demoUser.name = a.name;
+        demoUser.title = a.title;
+        demoUser.dept = a.dept;
+        demoUser.reviewer = a.approval.reviewer || '';
+        demoUser.reviewerTitle = a.approval.reviewerTitle || '';
+        renderUser();
+        if (!prev) return;
+        if (agentAbort) agentAbort.abort();
+        agentHistory = [];
+        // 시작 화면에선 대화 로그가 감춰져 있어 안내를 쌓지 않음 — 칩 표기로 충분
+        if (docOn) pushChat(signer() + ' 계정으로 전환했습니다. 이후 대화와 새로 만드는 문서에 이 계정이 적용됩니다.', false);
+      });
+      AlabAccount.load().catch(function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
+    }
+    // 드로어 전송 — 시작 화면에선 「대화로 시작」과 같은 경로로 빈 지면부터 염
+    function sendDrawer() {
+      if (docOn || !chatInputEl) return sendAgentChat();
+      if (agentAbort || !chatInputEl.value.trim()) return;
+      if (startAsk(chatInputEl.value)) chatInputEl.value = '';
+    }
+    if (chatSendEl) chatSendEl.addEventListener('click', sendDrawer);
+    if (chatInputEl) chatInputEl.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing) return;
+      ev.preventDefault();   // 줄바꿈 대신 전송 — 줄바꿈은 Shift+Enter 소관
+      sendDrawer();
+    });
 
     var mergeMask = document.getElementById('mergeMask');
     var mergeListEl = document.getElementById('mergeList');
@@ -3072,15 +3334,13 @@
     if (pickGo) pickGo.addEventListener('click', runPick);
     bindMaskClose(pickMask, closePick);
 
-    // ── 템플릿으로 시작 흐름 — 요청 문장에 맞는 추천 서식을 고르면 데이터를 붙여 생성
+    // ── 템플릿으로 시작 흐름 — 요청을 적고 서식을 고르면 빈 문서를 열고 요청을 Agent에 전달
     var tplCatalog = [];
-    var tplRequest = '';
 
     fetch('data/templates/index.json')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         tplCatalog = j.templates || [];
-        tplRequest = j.demo && j.demo.request ? j.demo.request : '';
       })
       .catch(function () { tplCatalog = []; });
 
@@ -3095,16 +3355,14 @@
       return hit;
     }
 
-    // 추천 목록 — 카드 하나가 곧 「이 서식으로 작성」 버튼, 마지막은 자동 서식 갈래
+    // 서식 목록 — 카드 하나가 곧 「이 서식으로 작성」 버튼, 마지막은 자동 서식 갈래
     function renderTplList() {
       if (!tplListEl) return;
       var cards = tplCatalog.map(function (t) {
         var secs = (t.sections || []).map(function (x, i) { return '<span class="sec">' + (i + 1) + ' ' + x + '</span>'; }).join('');
         return '<button class="tpl-card" type="button" data-id="' + t.id + '">' +
-          '<span class="tc-head"><span class="tc-nm">' + t.name + '</span><span class="tc-fit">적합도 ' + t.fit + '%</span></span>' +
-          '<span class="tc-why">' + t.why + '</span>' +
+          '<span class="tc-head"><span class="tc-nm">' + t.name + '</span></span>' +
           '<span class="tc-secs">' + secs + '</span>' +
-          '<span class="tc-src">▦ ' + t.source.label + ' 자동 연결</span>' +
           '<span class="tc-go">이 서식으로 작성 →</span>' +
           '</button>';
       }).join('');
@@ -3112,10 +3370,10 @@
         '<button class="tpl-card auto" type="button" data-auto="1">' +
         '<span class="g">✦</span>' +
         '<span class="tc-nm">자동 서식 만들기</span>' +
-        '<span class="tc-why">맞는 서식이 없으면 목적부터 다시 듣고 서식을 새로 구성합니다.</span>' +
+        '<span class="tc-why">맞는 서식이 없으면 서식 없이 요청을 대화로 이어 갑니다.</span>' +
         '<span class="tc-go">대화로 이어서 만들기 →</span>' +
         '</button>';
-      if (tplCountEl) tplCountEl.textContent = tplCatalog.length + '건 추천';
+      if (tplCountEl) tplCountEl.textContent = tplCatalog.length + '종';
     }
     if (tplListEl) tplListEl.addEventListener('click', function (ev) {
       var card = ev.target.closest ? ev.target.closest('.tpl-card') : null;
@@ -3126,69 +3384,49 @@
 
     function openTpl() {
       if (!tplCatalog.length) { showToast('서식 목록을 불러오지 못했습니다'); return; }
-      if (tplInput) tplInput.value = tplRequest;
       renderTplList();
       if (tplMask) tplMask.classList.add('open');
     }
     function closeTpl() { if (tplMask) tplMask.classList.remove('open'); }
 
-    // 서식 선택 — 원천이 보고서면 취합, 표면 집계로 채움
-    function runTpl(id) {
-      var t = tplOf(id);
-      if (!t) return;
-      if (t.source.kind === 'reports') {
-        if (!dailyData) { showToast('일일 보고서 데이터를 불러오지 못했습니다'); return; }
-        makeWeeklyDoc(dailyData.reports, function (a) {
-          pushChat(tplRequest, true);
-          pushChat('「' + t.name + '」 서식에 ' + t.source.label + '을 연결해 채웠습니다. ' + weeklyChat(a, dailyData.reports.length));
-          closeTpl();
-        });
-        return;
+    // 창의 요청 문장 — 비어 있으면 입력 유도, 길이 초과면 창 유지
+    function tplAsk() {
+      var ask = tplInput ? tplInput.value.trim() : '';
+      if (!ask) {
+        showToast('요청을 입력해 주세요');
+        if (tplInput) tplInput.focus();
       }
-      loadDataset(t.source.id, function (ds) {
-        if (!ds) { showToast('데이터를 불러오지 못했습니다'); return; }
-        makeBriefDoc(ds, function () {
-          pushChat(tplRequest, true);
-          pushChat('「' + t.name + '」 서식에 ' + t.source.label + '을 연결해 ' + nf(ds.rows.length) + '행으로 집계했습니다. ' + briefChat(ds));
-          closeTpl();
-        });
-      });
+      return ask && !askTooLong(ask) ? ask : '';
     }
 
-    // 자동 서식 — 추천에 없을 때, 요청을 대화로 넘겨 서식 구성부터 이어 감
-    function runTplAuto() {
+    // 서식 선택 — 서식 이름의 빈 문서를 열고 요청을 Agent에 전달, 지면 기안은 후속 단계
+    function runTpl(id) {
+      var t = tplOf(id);
+      var ask = tplAsk();
+      if (!t || !ask) return;
       closeTpl();
+      tplInput.value = '';
       showBlankDoc();
-      pushChat(tplRequest + ' 추천 서식 중에는 맞는 게 없어. 서식부터 새로 만들어 줘.', true, 'ask');
-      pushChat('알겠습니다. 요청에 주간 집계와 품질 이상 조치가 함께 있으니 총괄·일자별 상세·조치 이력 세 절로 서식을 새로 구성하겠습니다. ' +
-        '절 구성과 표 항목은 근거 데이터가 정해진 뒤에 확정하겠습니다. ' +
-        '기안은 계정 정보인 ' + josaRo(signer()) + ' 잡아 두겠습니다.', false, 'ask');
-      askSourcePick();
+      if (docnameEl) docnameEl.textContent = t.name;
+      setDocPages([t.name]);
+      sendAgentChat(ask);
+    }
+
+    // 자동 서식 — 서식 없이 요청만 Agent에 전달, 「대화로 시작」과 같은 경로
+    function runTplAuto() {
+      var ask = tplAsk();
+      if (!ask) return;
+      closeTpl();
+      tplInput.value = '';
+      startAsk(ask);
     }
 
     var tplX = document.getElementById('tplX');
     if (tplX) tplX.addEventListener('click', closeTpl);
     bindMaskClose(tplMask, closeTpl);
 
-    // ── 대화로 시작 흐름 — 목적 문장을 받아 서식 방향을 제안하고, 근거 원천 선택으로 문서까지 이음
-    var ASK_SAMPLE = '최근 생산 실적을 공장장 보고용으로 정리해 줘.';
-
-    // 근거 원천 후보 — 이미 쓴 보고서 취합과 사내 DB 표를 한 목록에 둠
-    function askSources() {
-      var list = [];
-      if (dailyData) list.push({
-        kind: 'reports',
-        sys: '보고서',
-        nm: '일일 생산보고 ' + dailyData.reports.length + '건',
-        sub: dailyData.period.label + ' · 일자별 실적과 품질 이상 조치'
-      });
-      dataCatalog.forEach(function (d) {
-        list.push({ kind: 'dataset', id: d.id, sys: d.system, nm: d.name, sub: d.summary });
-      });
-      return list;
-    }
-
-    // 빈 지면 — 대화 갈래 진입 즉시 띄우는 임시 문서, 원천이 정해지면 이 지면이 채워짐
+    // ── 대화로 시작 흐름 — 빈 지면으로 전환한 뒤 요청을 Agent에 전달
+    // 빈 지면 — 작성 단계 진입 즉시 띄우는 임시 문서, 기안 결과가 이 지면을 채움
     function showBlankDoc() {
       if (docPage) docPage.innerHTML = '';
       showDoc(true);
@@ -3197,44 +3435,17 @@
       if (docnameEl) docnameEl.textContent = baseDocName;
     }
 
-    // 원천 선택 마디 — 대화 갈래와 자동 서식 갈래가 공유, 고르면 서식이 확정되고 지면이 채워짐
-    function askSourcePick() {
-      var srcs = askSources();
-      if (!srcs.length) { showToast('원천 데이터를 불러오지 못했습니다'); return; }
-      pushChatOpts('근거로 쓸 원천을 골라 주세요. 고른 원천에 맞춰 집계 축과 표 항목을 확정하겠습니다.', srcs, runAskSource);
-    }
-
-    // 원천 확정 — 보고서면 취합 서식, 표면 분석 서식으로 갈라져 기존 산출 경로를 그대로 씀
-    function runAskSource(it, lock) {
-      if (it.kind === 'reports') {
-        makeWeeklyDoc(dailyData.reports, function (a) {
-          lock();
-          pushChat('일일 보고서 ' + dailyData.reports.length + '건을 근거로 잡아 총괄·일자별 상세·품질 이상 조치 세 절로 서식을 확정했습니다. ' +
-            weeklyChat(a, dailyData.reports.length));
-        });
-        return;
-      }
-      loadDataset(it.id, function (ds) {
-        if (!ds) { showToast('데이터를 불러오지 못했습니다'); return; }
-        makeBriefDoc(ds, function () {
-          lock();
-          var axis = (ds.doc.group_title || '').replace(/별$/, '');
-          pushChat('「' + ds.name + '」 ' + nf(ds.row_count) + '행에서 ' + nf(ds.rows.length) + '행을 추출해 ' + axis +
-            '별 집계로 개요·핵심 지표·집계·특이 항목 네 절 서식을 확정했습니다. ' + briefChat(ds));
-        });
-      });
-    }
-
-    // 대화 시작 — 빈 지면을 먼저 띄워 작성 단계로 넘긴 뒤 서식 방향을 제시
+    // 대화 시작 — 빈 입력·길이 초과는 전송하지 않음, 전송했으면 true
     function startAsk(text) {
-      var ask = String(text || '').trim() || ASK_SAMPLE;
-      if (!askSources().length) { showToast('원천 데이터를 불러오지 못했습니다'); return; }
+      var ask = String(text || '').trim();
+      if (!ask) {
+        if (startInput) startInput.focus();
+        return false;
+      }
+      if (askTooLong(ask)) return false;
       showBlankDoc();
-      pushChat(ask, true, 'ask');
-      pushChat('보고 대상이 ' + demoAudience + '이니 표지 제목과 결재란을 갖춘 사내 보고 서식으로 잡겠습니다. ' +
-        '총괄 지표를 앞에 두고 상세 집계와 특이 항목을 뒤에 두는 순서로 절을 구성하겠습니다. ' +
-        '기안자는 계정 정보인 ' + josaRo(signer()) + ' 넣겠습니다.', false, 'ask');
-      askSourcePick();
+      sendAgentChat(ask);
+      return true;
     }
 
     // 간격류 스피너 — ▲▼ 상하 조정(직접 입력은 input이 담당)

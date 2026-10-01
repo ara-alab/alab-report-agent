@@ -1,14 +1,9 @@
 {
-  "demo": {
-    "request": "최근 생산 실적을 공장장 보고용으로 정리하고 싶어. 주간 단위 집계와 품질 이상 조치가 함께 들어가야 해."
-  },
   "templates": [
     {
       "id": "weekly-summary",
       "name": "주간 생산실적 보고",
       "file": "data/templates/weekly-summary.html",
-      "fit": 92,
-      "why": "주간 집계와 품질 이상 조치를 한 장에 담는 사내 표준 서식",
       "sections": ["주간 실적 총괄", "일자별 상세 실적", "품질 이상 이벤트 및 조치"],
       "source": { "kind": "reports", "label": "일일 생산보고 5건" }
     },
@@ -16,8 +11,6 @@
       "id": "production-brief",
       "name": "생산 실적 분석 보고",
       "file": "data/templates/data-brief.html",
-      "fit": 84,
-      "why": "라인별 지표 중심 — 품질 조치는 특이 항목으로 축약",
       "sections": ["데이터 개요", "핵심 지표", "라인별 집계", "확인된 특이 항목"],
       "source": { "kind": "dataset", "id": "mes-production", "label": "MES 생산 실적 1,284행" }
     },
@@ -25,8 +18,6 @@
       "id": "equipment-brief",
       "name": "설비 가동 현황 보고",
       "file": "data/templates/data-brief.html",
-      "fit": 68,
-      "why": "설비 관점 보고 — 요청의 생산 실적과는 집계 축이 다름",
       "sections": ["데이터 개요", "핵심 지표", "설비별 집계", "확인된 특이 항목"],
       "source": { "kind": "dataset", "id": "mes-equipment", "label": "MES 설비 가동 이력 862행" }
     }

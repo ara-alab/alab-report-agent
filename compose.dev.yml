@@ -1,0 +1,33 @@
+# 로컬 개발용 MES DB — 배포용 docker-compose.yml 과 분리
+#   기동: npm run db:up · 초기화 재실행: npm run db:reset
+#   접속 값은 .env 에서 읽음 — 항목은 .env.example 참고
+name: alab-report-dev
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: alab-report-db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ALAB_DB_PORT:-13316}:3306"   # 타 프로젝트 3306·13306 과 충돌 회피
+    environment:
+      MARIADB_ROOT_PASSWORD: ${ALAB_DB_ROOT_PASSWORD:-alab-dev-root}
+      MARIADB_DATABASE: ${ALAB_DB_NAME:-mes}
+      MARIADB_USER: ${ALAB_DB_APP_USER:-alab_app}
+      MARIADB_PASSWORD: ${ALAB_DB_APP_PASSWORD:-alab-dev-app}
+      ALAB_DB_RO_USER: ${ALAB_DB_RO_USER:-alab_ro}
+      ALAB_DB_RO_PASSWORD: ${ALAB_DB_RO_PASSWORD:-alab-dev-ro}
+      TZ: Asia/Seoul
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro   # 볼륨이 비어 있을 때만 실행
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  db-data:
