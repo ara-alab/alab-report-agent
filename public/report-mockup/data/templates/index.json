@@ -1,25 +1,79 @@
 {
+  "style": "data/templates/agent/report.css",
+  "common": {
+    "doc_title": { "kind": "meta", "by": "llm", "label": "문서 제목", "required": true },
+    "doc_no": { "kind": "meta", "by": "system", "label": "문서번호", "required": true },
+    "issued_at": { "kind": "meta", "by": "system", "label": "작성일", "required": true },
+    "sign_date": { "kind": "meta", "by": "system", "label": "서명일", "required": true },
+    "dept": { "kind": "meta", "by": "account", "label": "기안부서", "required": true },
+    "writer": { "kind": "meta", "by": "account", "label": "작성자", "required": true },
+    "writer_short": { "kind": "meta", "by": "account", "label": "기안 결재란", "required": true },
+    "reviewer": { "kind": "meta", "by": "account", "label": "검토 결재란", "required": true },
+    "audience": { "kind": "meta", "by": "account", "label": "보고대상", "required": true },
+    "period_label": { "kind": "meta", "by": "query", "label": "대상 기간 명칭", "required": true },
+    "period_from": { "kind": "meta", "by": "query", "label": "대상 기간 시작일", "required": true },
+    "period_to": { "kind": "meta", "by": "query", "label": "대상 기간 종료일", "required": true },
+    "basis": { "kind": "meta", "by": "llm", "label": "작성근거", "required": true }
+  },
   "templates": [
     {
       "id": "weekly-summary",
       "name": "주간 생산실적 보고",
-      "file": "data/templates/weekly-summary.html",
+      "file": "data/templates/agent/weekly.html",
+      "purpose": "한 주간의 생산 지시·양품·불량 실적을 일자별로 집계하고 품질 이상 이벤트와 조치를 정리",
       "sections": ["주간 실적 총괄", "일자별 상세 실적", "품질 이상 이벤트 및 조치"],
-      "source": { "kind": "reports", "label": "일일 생산보고 5건" }
+      "source": { "kind": "reports", "label": "일일 생산보고 5건" },
+      "keys": {
+        "summary_stats": { "kind": "stats", "by": "query", "label": "주간 실적 총괄 지표", "required": true },
+        "daily_table": { "kind": "table", "by": "query", "label": "일자별 상세 실적", "required": true },
+        "events": { "kind": "list", "by": "llm", "label": "품질 이상 이벤트 및 조치", "required": true }
+      }
     },
     {
       "id": "production-brief",
       "name": "생산 실적 분석 보고",
-      "file": "data/templates/data-brief.html",
+      "file": "data/templates/agent/brief.html",
+      "purpose": "지정 기간의 생산 실적 데이터를 KPI와 그룹별 집계로 분석하고 특이 항목을 정리",
       "sections": ["데이터 개요", "핵심 지표", "라인별 집계", "확인된 특이 항목"],
-      "source": { "kind": "dataset", "id": "mes-production", "label": "MES 생산 실적 1,284행" }
+      "source": { "kind": "dataset", "id": "mes-production", "label": "MES 생산 실적 1,284행" },
+      "keys": {
+        "data_overview": { "kind": "text", "by": "llm", "label": "데이터 개요", "required": true },
+        "kpi_stats": { "kind": "stats", "by": "query", "label": "핵심 지표", "required": true },
+        "group_title": { "kind": "meta", "by": "llm", "label": "집계 기준 명칭", "required": true },
+        "group_table": { "kind": "table", "by": "query", "label": "그룹별 집계", "required": true },
+        "findings": { "kind": "list", "by": "llm", "label": "확인된 특이 항목", "required": true }
+      }
     },
     {
       "id": "equipment-brief",
       "name": "설비 가동 현황 보고",
-      "file": "data/templates/data-brief.html",
+      "file": "data/templates/agent/brief.html",
+      "purpose": "지정 기간의 설비 가동·측정 로그를 설비별로 집계하고 경보·특이 항목을 정리",
       "sections": ["데이터 개요", "핵심 지표", "설비별 집계", "확인된 특이 항목"],
-      "source": { "kind": "dataset", "id": "mes-equipment", "label": "MES 설비 가동 이력 862행" }
+      "source": { "kind": "dataset", "id": "mes-equipment", "label": "MES 설비 가동 이력 862행" },
+      "keys": {
+        "data_overview": { "kind": "text", "by": "llm", "label": "데이터 개요", "required": true },
+        "kpi_stats": { "kind": "stats", "by": "query", "label": "핵심 지표", "required": true },
+        "group_title": { "kind": "meta", "by": "llm", "label": "집계 기준 명칭", "required": true },
+        "group_table": { "kind": "table", "by": "query", "label": "설비별 집계", "required": true },
+        "findings": { "kind": "list", "by": "llm", "label": "확인된 특이 항목", "required": true }
+      }
+    },
+    {
+      "id": "equipment-quality-impact",
+      "name": "설비 이상·품질 영향 보고",
+      "file": "data/templates/agent/impact.html",
+      "purpose": "설비 측정값의 규격 이탈을 판정하고 이상 구간의 생산·품질 실적 영향과 원인·조치를 정리",
+      "sections": ["개요", "핵심 지표", "규격 이탈 판정", "이상 구간 영향 실적", "원인 분석", "조치 사항"],
+      "source": { "kind": "dataset", "id": "mes-equipment", "label": "MES 설비 측정 로그·생산 실적" },
+      "keys": {
+        "summary": { "kind": "text", "by": "llm", "label": "개요", "required": true },
+        "kpi_stats": { "kind": "stats", "by": "query", "label": "핵심 지표", "required": true },
+        "violation_table": { "kind": "table", "by": "query", "label": "규격 이탈 판정", "required": true },
+        "impact_table": { "kind": "table", "by": "query", "label": "이상 구간 영향 실적", "required": true },
+        "cause": { "kind": "text", "by": "llm", "label": "원인 분석", "required": true },
+        "actions": { "kind": "list", "by": "llm", "label": "조치 사항", "required": false }
+      }
     }
   ]
 }

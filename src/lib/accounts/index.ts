@@ -40,7 +40,7 @@ export const ACCOUNTS: readonly Account[] = [
     role: "drafter",
     duty: "품질 보고서 기안, 불량 유형·설비 이상과 원인 분석 정리",
     approval: { reviewer: "review-lee", approver: "공장장" },
-    defaultTemplate: "production-brief",
+    defaultTemplate: "equipment-quality-impact",
     // 거래처·입출고 제외 — 생산·불량·설비 로그 중심
     allowedTables: ["cm010", "mdl100", "it100", "eq100", "eq110", "eq120", "hr100", ...MES],
   },
