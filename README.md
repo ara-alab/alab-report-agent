@@ -47,7 +47,7 @@ npm run dev
 | `scripts/db/` | 가상 데이터 생성기 |
 | `scripts/check-sql-guard.mjs` | SQL 가드 회귀 검사 사례 |
 | `compose.dev.yml` | 로컬 개발용 MariaDB 컨테이너 |
-| `docs/` | MVP 구현 계획·로드맵 |
+| `docs/` | 대회 과제 개요·MVP 구현 계획·로드맵 |
 
 ## 로컬 DB (가상 MES/ERP)
 
