@@ -139,6 +139,19 @@ export async function saveReport(input: SaveInput, account: Account) {
   return (await getReport(id, account))!;
 }
 
+export type ReportSummary = {
+  id: number;
+  docNo: string;
+  templateId: string;
+  title: string;
+  accountId: string;
+  writer: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 // 조회 범위 — 검토자는 전체, 기안자는 본인 작성분
 const visible = (a: Account) => (a.role === "reviewer" ? { sql: "1 = 1", params: [] as string[] } : { sql: "account_id = ?", params: [a.id] });
 
@@ -151,7 +164,7 @@ export async function listReports(account: Account, { limit = 50 }: { limit?: nu
     `SELECT ${SUMMARY_COLS} FROM ${DB}.report WHERE ${v.sql} ORDER BY created_at DESC, report_id DESC LIMIT ?`,
     [...v.params, Math.min(Math.max(1, limit), 200)],
   );
-  return rows;
+  return rows as unknown as ReportSummary[];
 }
 
 // 단건 — 시스템 발급 키를 합친 전체 채움 값과 수치 목록
@@ -168,7 +181,7 @@ export async function getReport(id: number, account: Account) {
        FROM ${DB}.report_number WHERE report_id = ? ORDER BY num_key`,
     [id],
   );
-  const { issuedDate, fills, ...meta } = row;
+  const { issuedDate, fills, ...meta } = row as unknown as ReportSummary & { requestText: string | null; fills: unknown; issuedDate: string };
   const stored = (typeof fills === "string" ? JSON.parse(fills) : fills) as Fills;
   return {
     ...meta,

@@ -1,0 +1,115 @@
+// 기안 tool — 서식 추천·보고서 초안 작성·저장·목록, 실행 단위 조회 캐시를 수치 참조 원천으로 사용
+import "server-only";
+import type { Account } from "@/lib/accounts";
+import { ReportError, listReports, saveReport } from "@/lib/reports";
+import { DraftError, draftReport, templateCatalog, type Draft } from "./draft";
+import type { RunCache } from "./refs";
+
+// 실행 문맥 — 조회 결과 캐시, 이번 실행의 마지막 기안 입력(거부 포함)·초안·저장 결과, 요청 원문
+export type DraftContext = {
+  cache: RunCache;
+  requestText?: string;
+  lastInput?: Record<string, unknown>;
+  draft?: Draft;
+  saved?: { id: number; docNo: string };
+};
+
+export const DRAFTING_TOOLS = [
+  {
+    name: "recommend_templates",
+    description: "보고서 서식 목록을 반환합니다. 서식별 용도·섹션과 draft_report 로 채울 키(종류·라벨·필수 여부), 계정 기본 서식이 들어 있습니다. 요청에 맞는 서식을 고를 때 먼저 호출합니다.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "draft_report",
+    description: [
+      "서식에 맞춰 보고서 초안을 작성해 화면 지면에 표시합니다. 수치는 직접 쓰지 않고 이번 요청에서 실행한 조회 결과를 참조합니다.",
+      "참조 형식: \"조회ID:경로\". 조회ID는 도구 결과의 queryId, 경로는 결과 JSON 안의 위치입니다. 점으로 필드를 잇고, [n] 은 배열 위치, [필드=값] 은 조건에 맞는 원소 하나(값은 따옴표 없이), 배열 뒤 length 는 원소 수입니다. 예: analyze_kpi#ab12:total.current.value, check_limits#cd34:rows[entity=X].violations[item=Y].violationDays.length",
+      "키 종류별 입력: meta·text 는 문자열이며 안의 수치는 [[참조]] 또는 [[참조|소수자릿수]] 로 적습니다. 참조 없는 숫자는 날짜(M월 D일·MM-DD 등)·주차·분기·시각·차수·영문 코드·목록 번호 외에는 오류이며, 한계값·건수·일수·최대/최소값처럼 조회 결과에 있는 값도 예외 없이 참조로 적습니다.",
+      "value 는 {ref, digits?, unit?}. stats 는 [{label, ref 또는 text, unit?, digits?, tone?(good|bad|warn)}].",
+      "table 은 {columns:[{label, path?, digits?, align?(l|c|n)}], from?: \"조회ID:배열경로\", rows?: [[칸]], sum?: [칸]}. from 을 쓰면 배열 원소마다 열의 path·digits 로 칸을 만들고, rows 의 칸은 문자열 또는 {ref, digits?} 이며 칸의 digits 만 적용됩니다. 둘을 함께 쓰면 from 행 뒤에 rows 행이 붙습니다. 조회 결과 배열을 그대로 옮기는 표는 from 을 쓰고, rows 는 여러 조회 값을 한 표에 섞거나 일부 행만 고를 때만 씁니다.",
+      "list 는 [{text, when?, lead?}]. 문서 제목은 title, 대상 기간은 period 로 주고, 문서번호·작성일·기안자·결재란은 코드가 채웁니다. 글자 수 상한은 recommend_templates 결과의 limits 를 따릅니다.",
+      "오류가 있으면 초안 없이 오류 목록을 반환합니다. 이때 전체를 다시 보내지 않고 오류가 난 키만 고쳐 revise: true 와 함께 보냅니다. revise 호출은 보낸 키(title·period·fills 의 키 단위)만 직전 입력에 덮어써 다시 검증합니다. 경고(필수 키 누락 등)는 초안을 만든 뒤 함께 반환합니다.",
+    ].join(" "),
+    input_schema: {
+      type: "object",
+      properties: {
+        revise: { type: "boolean", description: "true 면 보낸 키만 직전 draft_report 입력에 덮어씀" },
+        template: { type: "string", description: "서식 id, revise 가 아니면 필수" },
+        title: { type: "string", description: "문서 제목, revise 가 아니면 필수" },
+        period: {
+          type: "object",
+          properties: { label: { type: "string", description: "기간 명칭, 예: 9월 4주" }, from: { type: "string" }, to: { type: "string" } },
+          required: ["label", "from", "to"],
+        },
+        fills: { type: "object", description: "서식 키별 입력", additionalProperties: true },
+      },
+      required: ["fills"],
+    },
+  },
+  {
+    name: "save_report",
+    description: "이번 요청에서 마지막으로 작성한 초안을 보고서 저장소에 저장하고 문서번호를 발번합니다. 사용자가 저장을 요청한 경우에만 호출합니다.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_reports",
+    description: "현재 계정이 볼 수 있는 저장된 보고서 목록(문서번호·서식·제목·기간·작성자·작성일)을 최신순으로 반환합니다.",
+    input_schema: { type: "object", properties: { limit: { type: "integer", description: "최대 건수, 기본 20" } } },
+  },
+] as const;
+
+const NAMES = new Set<string>(DRAFTING_TOOLS.map((t) => t.name));
+export const isDraftingTool = (name: string) => NAMES.has(name);
+
+export type DraftingOutcome = { content: string; isError: boolean };
+
+const json = (v: unknown): DraftingOutcome => ({ content: JSON.stringify(v), isError: false });
+const fail = (msg: string): DraftingOutcome => ({ content: msg, isError: true });
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+// 고쳐 쓰기 — 직전 입력에 보낸 최상위 필드와 fills 키만 덮어씀
+function reviseInput(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const rest = Object.fromEntries(Object.entries(patch).filter(([k]) => k !== "revise" && k !== "fills"));
+  const baseFills = isObj(base.fills) ? base.fills : {};
+  return { ...base, ...rest, fills: isObj(patch.fills) ? { ...baseFills, ...patch.fills } : baseFills };
+}
+
+export async function runDraftingTool(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<DraftingOutcome> {
+  try {
+    if (name === "recommend_templates") return json(await templateCatalog(account));
+    if (name === "draft_report") {
+      if (input.revise === true && !ctx.lastInput) return fail("고칠 직전 draft_report 입력이 없습니다. revise 없이 전체 입력으로 호출하세요.");
+      const merged = input.revise === true ? reviseInput(ctx.lastInput!, input) : input;
+      ctx.lastInput = merged;
+      let d: Draft;
+      try {
+        d = await draftReport(merged, account, ctx.cache);
+      } catch (e) {
+        if (e instanceof DraftError) return fail(`${e.message}\n오류가 난 키만 고쳐 revise: true 와 함께 다시 호출하세요.`);
+        throw e;
+      }
+      ctx.draft = d;
+      ctx.saved = undefined;
+      return json({ ok: true, template: d.template.id, title: d.title, filledKeys: Object.keys(d.fills), numbers: d.numbers.length, warnings: d.warnings });
+    }
+    if (name === "save_report") {
+      const d = ctx.draft;
+      if (!d) return fail("이번 요청에서 작성한 초안이 없습니다. draft_report 로 먼저 초안을 작성하세요.");
+      const r = await saveReport(
+        { id: ctx.saved?.id, templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: ctx.requestText, fills: d.fills, numbers: d.numbers },
+        account,
+      );
+      ctx.saved = { id: Number(r.id), docNo: String(r.docNo) };
+      return json({ ok: true, id: r.id, docNo: r.docNo });
+    }
+    if (name === "list_reports") {
+      const limit = Number.isInteger(input.limit) ? Number(input.limit) : 20;
+      return json({ reports: await listReports(account, { limit }) });
+    }
+    return fail(`사용할 수 없는 도구입니다: ${name}`);
+  } catch (e) {
+    if (e instanceof DraftError || e instanceof ReportError) return fail(e.message);
+    throw e;
+  }
+}

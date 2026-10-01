@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const account = accountId === undefined || typeof accountId === "string" ? getAccount(accountId) : null;
   if (!account) return Response.json({ error: "알 수 없는 계정입니다.", code: "bad_account" }, { status: 400 });
 
-  return runAiRequest(request, { route: ROUTE, timeoutMs: 180_000 }, async () =>
+  return runAiRequest(request, { route: ROUTE, timeoutMs: 300_000 }, async () =>
     aiJsonResponse(async (line) => {
       line({ type: "start", model: PREMIUM_MODEL, account: account.id });
       await runAgent(ROUTE, account, messages, line);

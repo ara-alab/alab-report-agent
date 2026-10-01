@@ -19,7 +19,7 @@ export function getAnthropic(): Anthropic {
 }
 
 // 작성·분석 기본 모델과 미배포 계정 대비 폴백
-export const PREMIUM_MODEL = process.env.ALAB_PREMIUM_MODEL || "claude-sonnet-5";
+export const PREMIUM_MODEL = process.env.ALAB_PREMIUM_MODEL || "claude-sonnet-5-5";
 export const PREMIUM_FALLBACK = "claude-sonnet-4-6";
 
 // 검수 전용 상위 모델 — 작성 모델과 다른 모델로 교차 검증
