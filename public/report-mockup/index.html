@@ -1569,6 +1569,8 @@
           <div class="rgroup-tools">
             <!-- 개발용 구현 — Agent 초안 명시 저장, UI 실구현 단계에서 교체 -->
             <button class="tool-lg" type="button" id="devSaveBtn" data-needdoc><span class="g">▣</span><span class="t">저장</span></button>
+            <!-- 개발용 구현 — 저장 보고서 정합성 검증, 수치별 근거 패널 구현 단계에서 교체 -->
+            <button class="tool-lg" type="button" id="devVerifyBtn" data-needdoc><span class="g">✓</span><span class="t">정합성 검증</span></button>
             <button class="tool-lg" type="button" data-needdoc data-soon><span class="g">⭳</span><span class="t">내보내기<span class="soon">준비중</span></span></button>
           </div>
           <div class="rgroup-label">문서</div>
@@ -3216,6 +3218,23 @@
         showSavedPage(j.report.id, j.report.docNo);
       }).catch(function (err) { showToast('저장하지 못했습니다: ' + err.message); })
         .then(function () { devSaveBtn.disabled = false; });
+    });
+    // 개발용 구현 — 저장 보고서 수치를 출처 조회 재실행 결과와 대조, 요약과 불일치 항목을 토스트로 표시
+    var devVerifyBtn = document.getElementById('devVerifyBtn');
+    if (devVerifyBtn) devVerifyBtn.addEventListener('click', function () {
+      if (devVerifyBtn.disabled) return;
+      var id = editReport ? editReport.id : (lastDraftRef && lastDraftRef.saved ? lastDraftRef.saved.id : null);
+      if (!id) { showToast('검증할 저장 보고서가 없습니다'); return; }
+      var acct = AlabAccount.current();
+      devVerifyBtn.disabled = true;
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '/verify?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
+        var s = j.summary;
+        var bad = j.numbers.filter(function (n) { return n.status !== 'match'; }).slice(0, 3).map(function (n) {
+          return (n.label || n.key) + ' ' + n.status + (n.current ? ' (저장 ' + n.stored.value + ' · 원본 ' + n.current.value + ')' : n.reason ? ' (' + n.reason + ')' : '');
+        });
+        showToast('정합성 검증 · 일치 ' + s.match + '/' + s.total + (s.rate === null ? '' : ' (' + Math.round(s.rate * 1000) / 10 + '%)') + (bad.length ? ' · ' + bad.join(' / ') : ''));
+      }).catch(function (err) { showToast('검증하지 못했습니다: ' + err.message); })
+        .then(function () { devVerifyBtn.disabled = false; });
     });
     // 저장 보고서 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 탭 「열기」와 주소 직접 진입 공용
     function openSavedReport() {
