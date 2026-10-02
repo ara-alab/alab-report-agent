@@ -6,16 +6,21 @@ import { analysisTools, runAnalysis } from "@/lib/analysis";
 import { CalendarError, RESOLVE_WEEK_TOOL, WEEK_RULE, monthWeeks } from "@/lib/calendar";
 import { CATALOG_TOOLS, CatalogError, describeTable, listDatasets } from "@/lib/catalog";
 import { sqlErrorMessage } from "@/lib/db";
-import { DRAFTING_TOOLS, isDraftingTool, runDraftingTool, type DraftContext } from "@/lib/drafting/tools";
+import { DRAFTING_TOOLS, isDraftingTool, runDraftingTool, type DraftContext, type DraftingErrorKind } from "@/lib/drafting/tools";
 import { QueryParamError, listQueries, runQuery } from "@/lib/queries";
-import { RUN_SQL_TOOL, SqlGuardError, runSql } from "@/lib/queries/sql";
+import { RUN_SQL_TOOL, SqlExecError, SqlGuardError, runSql } from "@/lib/queries/sql";
 
 // 모델에 넘기는 tool 결과 상한 — 초과 시 행을 줄이고 생략 행 수 표기
 const MAX_RESULT_CHARS = 24_000;
 
+// 오류 범주 — 기안 tool 범주에 조회 조건·SQL 가드·데이터 설명·SQL 실행·미제공 도구 범주 추가
+export type ToolErrorKind = DraftingErrorKind | "param" | "sql_guard" | "catalog" | "sql_error" | "unknown_tool";
+
 export type ToolOutcome = {
   content: string;
   isError: boolean;
+  errorKind?: ToolErrorKind;
+  issues?: { at: string; kind: string }[];
   queryId?: string;
   rowCount?: number;
   truncated?: boolean;
@@ -61,6 +66,12 @@ function keep(ctx: DraftContext, queryId: string, name: string, input: unknown, 
   ctx.cache.set(queryId, { name, input, result });
 }
 
+// 결과 건수 — 구분 없는 KPI 분석은 합계 산출 시 1건, 산출 불가 시 0건
+function analysisCount(a: NonNullable<Awaited<ReturnType<typeof runAnalysis>>>) {
+  if ("total" in a && a.groupBy === null) return "current" in a.total && a.total.current?.value != null ? 1 : 0;
+  return a.rows.length;
+}
+
 async function dispatch(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<ToolOutcome> {
   if (isDraftingTool(name)) return runDraftingTool(name, input, account, ctx);
   if (name === "list_datasets") return { content: fit({ datasets: await listDatasets(account.allowedTables) }), isError: false };
@@ -68,14 +79,14 @@ async function dispatch(name: string, input: Record<string, unknown>, account: A
   if (name === "describe_table") return { content: fit(await describeTable(String(input.table ?? ""), account.allowedTables)), isError: false };
   const analysis = await runAnalysis(name, input, account);
   if (analysis) keep(ctx, analysis.queryId, name, input, analysis);
-  if (analysis) return { content: fit(analysis), isError: false, queryId: analysis.queryId, rowCount: analysis.rows.length, truncated: analysis.truncated, elapsedMs: analysis.elapsedMs };
+  if (analysis) return { content: fit(analysis), isError: false, queryId: analysis.queryId, rowCount: analysisCount(analysis), truncated: analysis.truncated, elapsedMs: analysis.elapsedMs };
   const out =
     name === "run_sql"
       ? await runSql(String(input.sql ?? ""), account)
       : allowedQueries(account).some((q) => q.name === name)
         ? await runQuery(name, input)
         : null;
-  if (!out) return { content: `사용할 수 없는 도구입니다: ${name}`, isError: true };
+  if (!out) return { content: `사용할 수 없는 도구입니다: ${name}`, isError: true, errorKind: "unknown_tool" };
   keep(ctx, out.queryId, name, input, out);
   return { content: fit(out), isError: false, queryId: out.queryId, rowCount: out.rows.length, truncated: out.truncated, elapsedMs: out.elapsedMs };
 }
@@ -84,10 +95,13 @@ export async function executeTool(name: string, input: unknown, account: Account
   try {
     return await dispatch(name, (input ?? {}) as Record<string, unknown>, account, ctx);
   } catch (e) {
-    if (e instanceof QueryParamError || e instanceof SqlGuardError || e instanceof CatalogError || e instanceof CalendarError) return { content: e.message, isError: true };
+    if (e instanceof QueryParamError || e instanceof CalendarError) return { content: e.message, isError: true, errorKind: "param" };
+    if (e instanceof SqlExecError) return { content: e.message, isError: true, errorKind: "sql_error" };
+    if (e instanceof SqlGuardError) return { content: e.message, isError: true, errorKind: "sql_guard" };
+    if (e instanceof CatalogError) return { content: e.message, isError: true, errorKind: "catalog" };
     // SQL 수준 오류는 모델이 조건을 고쳐 재시도, 연결 장애 등은 요청 실패로 전파
     const message = sqlErrorMessage(e);
-    if (message) return { content: message, isError: true };
+    if (message) return { content: message, isError: true, errorKind: "sql_error" };
     throw e;
   }
 }

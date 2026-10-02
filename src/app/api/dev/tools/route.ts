@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const results = [];
   for (const c of body.calls as { name?: unknown; input?: unknown }[]) {
     const out = await executeTool(String(c?.name ?? ""), c?.input ?? {}, account, ctx);
-    results.push({ name: c?.name, ok: !out.isError, queryId: out.queryId, content: out.content.length > 4000 ? out.content.slice(0, 4000) + "…" : out.content });
+    results.push({ name: c?.name, ok: !out.isError, queryId: out.queryId, errorKind: out.errorKind, issues: out.issues, content: out.content.length > 4000 ? out.content.slice(0, 4000) + "…" : out.content });
   }
   return Response.json({ results, draft: ctx.draft ?? null, saved: ctx.saved ?? null });
 }

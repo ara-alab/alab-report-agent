@@ -8,7 +8,16 @@ import { RefError, bareNumbers, inlineRefs, knownLabels, resolveArray, resolveRe
 import { fillIssues, formatNumber, renderTemplate, type Align, type Cell, type Fill, type Fills, type NumMark, type Tone } from "./render";
 import { getTemplate, listTemplates, templateSource, type KeySpec } from "./templates";
 
-export class DraftError extends Error {}
+// 검증 오류 범주 — 화면 검증 과정 표시·측정 집계 단위
+export type IssueKind = "bare_number" | "char_limit" | "ref" | "unknown_key" | "format" | "template";
+export type DraftIssue = { at: string; kind: IssueKind; message: string };
+
+export class DraftError extends Error {
+  constructor(readonly issues: DraftIssue[]) {
+    super(issues.map((i) => i.message).join("\n"));
+  }
+}
+const draftError = (at: string, kind: IssueKind, msg: string) => new DraftError([{ at, kind, message: msg }]);
 
 export type Draft = {
   template: { id: string; name: string };
@@ -42,7 +51,7 @@ export const LIMITS = {
 // 기안 1회 상태 — 수치 출처 누적과 오류 수집
 class Builder {
   numbers: ReportNumber[] = [];
-  errors: string[] = [];
+  issues: DraftIssue[] = [];
   private known: string[] | null = null;
   constructor(private cache: RunCache) {}
 
@@ -56,12 +65,12 @@ class Builder {
     // 목록 항목 형식({text})으로 감싼 서술은 본문 문자열로 수용
     if (typeof raw === "object" && raw !== null && !Array.isArray(raw) && Object.keys(raw).length === 1 && typeof (raw as { text?: unknown }).text === "string") raw = (raw as { text: string }).text;
     if (typeof raw !== "string") {
-      this.errors.push(`${at}: 문자열이어야 합니다`);
+      this.fail(at, "format", "문자열이어야 합니다");
       return { text: "" };
     }
     this.known ??= knownLabels(this.cache);
     const bare = bareNumbers(raw, this.known);
-    if (bare.length) this.errors.push(`${at}: 참조 없는 숫자 ${[...new Set(bare)].join(", ")} — 수치는 [[조회ID:경로]] 로 적고, 날짜는 M월 D일·MM-DD 형식으로 적으세요`);
+    if (bare.length) this.fail(at, "bare_number", `참조 없는 숫자 ${[...new Set(bare)].join(", ")} — 수치는 [[조회ID:경로]] 로 적고, 날짜는 M월 D일·MM-DD 형식으로 적으세요`);
     let n = 0;
     let out = "";
     let last = 0;
@@ -76,7 +85,7 @@ class Builder {
       out += shown;
     }
     out += raw.slice(last);
-    if (out.length > max) this.errors.push(`${at}: ${max}자를 넘습니다`);
+    if (out.length > max) this.fail(at, "char_limit", `${max}자를 넘습니다`);
     return nums.length ? { text: out, nums } : { text: out };
   }
 
@@ -87,8 +96,7 @@ class Builder {
   // 참조 해석 — 숫자 값은 수치 목록에 출처와 함께 기록
   resolve(ref: unknown, key: string, label?: string, unit?: string): Resolved | null {
     if (typeof ref !== "string") {
-      this.errors.push(`${key}: ref 는 "조회ID:경로" 문자열이어야 합니다`);
-      return null;
+      return this.fail(key, "ref", `ref 는 "조회ID:경로" 문자열이어야 합니다`);
     }
     try {
       const r = resolveRef(this.cache, ref);
@@ -96,8 +104,7 @@ class Builder {
       return r;
     } catch (e) {
       if (!(e instanceof RefError)) throw e;
-      this.errors.push(`${key}: ${e.message}`);
-      return null;
+      return this.fail(key, "ref", e.message);
     }
   }
 
@@ -117,7 +124,7 @@ class Builder {
   digitsOf(v: unknown, at: string): number | undefined {
     if (v === undefined) return undefined;
     if (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 6) return v as number;
-    this.errors.push(`${at}: digits 는 0~6 정수입니다`);
+    this.fail(at, "format", "digits 는 0~6 정수입니다");
     return undefined;
   }
 
@@ -130,19 +137,19 @@ class Builder {
         return { kind: "text", ...this.marked(raw, key) };
       case "value": {
         const o = typeof raw === "string" ? { ref: raw } : isObj(raw) ? raw : null;
-        if (!o) return this.fail(`${key}: {ref, digits?, unit?} 객체여야 합니다`);
+        if (!o) return this.fail(key, "format", "{ref, digits?, unit?} 객체여야 합니다");
         const digits = this.digitsOf(o.digits, `${key}.digits`);
         const unit = typeof o.unit === "string" ? o.unit : undefined;
         const r = this.resolve(o.ref, key, spec.label, unit);
         if (!r) return null;
-        if (typeof r.value !== "number") return this.fail(`${key}: 숫자 값이 아닙니다`);
+        if (typeof r.value !== "number") return this.fail(key, "ref", "숫자 값이 아닙니다");
         return { kind: "value", value: r.value, digits, unit };
       }
       case "stats": {
-        if (!Array.isArray(raw)) return this.fail(`${key}: [{label, ref|text, unit?, digits?, tone?}] 배열이어야 합니다`);
+        if (!Array.isArray(raw)) return this.fail(key, "format", "[{label, ref|text, unit?, digits?, tone?}] 배열이어야 합니다");
         const items = raw.map((x, i) => {
           const at = `${key}[${i}]`;
-          if (!isObj(x)) return this.fail(`${at}: 객체여야 합니다`);
+          if (!isObj(x)) return this.fail(at, "format", "객체여야 합니다");
           const label = this.text(x.label, `${at}.label`, LIMITS.statLabel);
           const unit = typeof x.unit === "string" ? x.unit : undefined;
           const digits = this.digitsOf(x.digits, `${at}.digits`);
@@ -158,13 +165,13 @@ class Builder {
       case "table":
         return this.table(key, raw);
       case "list": {
-        if (!Array.isArray(raw)) return this.fail(`${key}: [{text, when?, lead?}] 배열이어야 합니다`);
+        if (!Array.isArray(raw)) return this.fail(key, "format", "[{text, when?, lead?}] 배열이어야 합니다");
         return {
           kind: "list",
           items: raw.map((x, i) => {
             const o = typeof x === "string" ? { text: x } : isObj(x) ? x : { text: "" };
             // 강조 행 표시 — 참·거짓 외 값은 내용 소실 방지를 위해 거부
-            if (o.lead !== undefined && typeof o.lead !== "boolean") this.fail(`${key}[${i}].lead: 참·거짓 값이어야 합니다(강조 행 표시). 소제목은 text 에 포함하세요`);
+            if (o.lead !== undefined && typeof o.lead !== "boolean") this.fail(`${key}[${i}].lead`, "format", "참·거짓 값이어야 합니다(강조 행 표시). 소제목은 text 에 포함하세요");
             return {
               ...this.marked(o.text, `${key}[${i}]`, LIMITS.listItem),
               when: o.when === undefined ? undefined : this.text(o.when, `${key}[${i}].when`, LIMITS.listWhen),
@@ -176,15 +183,16 @@ class Builder {
     }
   }
 
-  fail(msg: string): null {
-    this.errors.push(msg);
+  // 오류 기록 — 모델에 돌려주는 문구는 "위치: 내용", 범주는 표시·집계용
+  fail(at: string, kind: IssueKind, msg: string): null {
+    this.issues.push({ at, kind, message: `${at}: ${msg}` });
     return null;
   }
 
   // 표 — 행 원천 배열 참조(from + 열 path) 또는 칸 단위 입력(rows), 칸은 문자열 또는 {ref, digits?}
   table(key: string, raw: unknown): Fill | null {
-    if (!isObj(raw) || !Array.isArray(raw.columns)) return this.fail(`${key}: {columns, from?, rows?, sum?} 객체여야 합니다`);
-    const cols = raw.columns.map((c, j) => (isObj(c) ? c : (this.fail(`${key}.columns[${j}]: 객체여야 합니다`), {})));
+    if (!isObj(raw) || !Array.isArray(raw.columns)) return this.fail(key, "format", "{columns, from?, rows?, sum?} 객체여야 합니다");
+    const cols = raw.columns.map((c, j) => (isObj(c) ? c : (this.fail(`${key}.columns[${j}]`, "format", "객체여야 합니다"), {})));
     const columns = cols.map((c, j) => ({
       label: this.text(c.label, `${key}.columns[${j}].label`, LIMITS.columnLabel),
       align: ALIGNS.find((v) => v === c.align),
@@ -198,22 +206,22 @@ class Builder {
       }
       return this.text(x, at, LIMITS.cell);
     };
-    const rowOf = (r: unknown, at: string) => (Array.isArray(r) ? r.map((x, j) => cellOf(x, `${at}[${j}]`)) : (this.fail(`${at}: 배열이어야 합니다`), []));
+    const rowOf = (r: unknown, at: string) => (Array.isArray(r) ? r.map((x, j) => cellOf(x, `${at}[${j}]`)) : (this.fail(at, "format", "배열이어야 합니다"), []));
 
     let rows: Cell[][] = [];
     if (raw.from !== undefined) {
-      if (typeof raw.from !== "string") return this.fail(`${key}.from: "조회ID:배열경로" 문자열이어야 합니다`);
+      if (typeof raw.from !== "string") return this.fail(`${key}.from`, "ref", `"조회ID:배열경로" 문자열이어야 합니다`);
       let src;
       try {
         src = resolveArray(this.cache, raw.from);
       } catch (e) {
         if (!(e instanceof RefError)) throw e;
-        return this.fail(`${key}.from: ${e.message}`);
+        return this.fail(`${key}.from`, "ref", e.message);
       }
       rows = src.rows.map((row, i) =>
         cols.map((c, j) => {
           const at = `${key}[${i}][${j}]`;
-          if (typeof c.path !== "string") return this.fail(`${key}.columns[${j}].path: from 을 쓰면 열마다 path 가 필요합니다`);
+          if (typeof c.path !== "string") return this.fail(`${key}.columns[${j}].path`, "format", "from 을 쓰면 열마다 path 가 필요합니다");
           try {
             const { value: v, parent } = walk(row, c.path);
             const digits = this.digitsOf(c.digits, `${key}.columns[${j}].digits`);
@@ -223,19 +231,19 @@ class Builder {
               return digits !== undefined ? formatNumber(v, digits) : v;
             }
             if (v === null || typeof v === "string") return v;
-            return this.fail(`${at}: ${c.path} 값이 숫자·문자열이 아닙니다`);
+            return this.fail(at, "ref", `${c.path} 값이 숫자·문자열이 아닙니다`);
           } catch (e) {
             if (!(e instanceof RefError)) throw e;
-            return this.fail(`${at}: ${e.message}`);
+            return this.fail(at, "ref", e.message);
           }
         }),
       );
     }
     if (raw.rows !== undefined) {
-      if (!Array.isArray(raw.rows)) return this.fail(`${key}.rows: 배열이어야 합니다`);
+      if (!Array.isArray(raw.rows)) return this.fail(`${key}.rows`, "format", "배열이어야 합니다");
       rows = rows.concat(raw.rows.map((r, i) => rowOf(r, `${key}[${rows.length + i}]`)));
     }
-    if (raw.from === undefined && raw.rows === undefined) return this.fail(`${key}: from 또는 rows 가 필요합니다`);
+    if (raw.from === undefined && raw.rows === undefined) return this.fail(key, "format", "from 또는 rows 가 필요합니다");
     const sum = raw.sum === undefined ? undefined : rowOf(raw.sum, `${key}.sum`);
     return { kind: "table", columns, rows, sum };
   }
@@ -269,29 +277,29 @@ export async function renderSaved(templateId: string, fills: Fills, numKeys?: Re
 
 export async function draftReport(input: Record<string, unknown>, account: Account, cache: RunCache): Promise<Draft> {
   const t = await getTemplate(String(input.template ?? ""));
-  if (!t) throw new DraftError(`알 수 없는 서식입니다: ${String(input.template)} — recommend_templates 결과의 id 를 쓰세요`);
+  if (!t) throw draftError("template", "template", `알 수 없는 서식입니다: ${String(input.template)} — recommend_templates 결과의 id 를 쓰세요`);
   const b = new Builder(cache);
   const period = isObj(input.period) ? input.period : {};
   const from = String(period.from ?? "");
   const to = String(period.to ?? "");
-  if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) b.errors.push("period: {label, from, to} 의 from·to 는 YYYY-MM-DD 이고 from ≤ to 여야 합니다");
+  if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) b.fail("period", "format", "{label, from, to} 의 from·to 는 YYYY-MM-DD 이고 from ≤ to 여야 합니다");
   const title = b.text(input.title, "title", LIMITS.title);
   const label = b.text(period.label, "period.label", LIMITS.periodLabel);
 
   const given = isObj(input.fills) ? input.fills : {};
-  if (!isObj(input.fills)) b.errors.push("fills: 키별 입력 객체가 필요합니다");
+  if (!isObj(input.fills)) b.fail("fills", "format", "키별 입력 객체가 필요합니다");
   const warnings: string[] = [];
   const fills: Fills = {};
   for (const [k, raw] of Object.entries(given)) {
     const spec = t.keys[k];
-    if (!spec) b.errors.push(`${k}: 서식에 없는 키입니다`);
+    if (!spec) b.fail(k, "unknown_key", "서식에 없는 키입니다");
     else if (spec.by === "system" || spec.by === "account" || k.startsWith("period_") || k === "doc_title") warnings.push(`${k}: 코드가 채우는 키라 입력을 무시했습니다`);
     else {
       const f = b.fill(k, spec, raw);
       if (f) fills[k] = f;
     }
   }
-  if (b.errors.length) throw new DraftError(b.errors.join("\n"));
+  if (b.issues.length) throw new DraftError(b.issues);
 
   Object.assign(fills, {
     doc_title: { kind: "meta", text: title },
@@ -301,7 +309,7 @@ export async function draftReport(input: Record<string, unknown>, account: Accou
     ...accountFills(account),
   } satisfies Fills);
   const parsed = parseFills(fills);
-  if (!parsed.ok) throw new DraftError(parsed.error);
+  if (!parsed.ok) throw draftError("fills", "format", parsed.error);
   const issues = fillIssues(t.keys, { ...fills, ...systemFills(null) });
   const html = renderTemplate(await templateSource(t), t.keys, { ...fills, ...systemFills(null) }, new Set(b.numbers.map((x) => x.key)));
   return { template: { id: t.id, name: t.name }, title, period: { label, from, to }, fills, numbers: b.numbers, html, warnings: [...warnings, ...issues] };

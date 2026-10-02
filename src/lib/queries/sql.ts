@@ -7,6 +7,8 @@ import { queryIdOf } from "./registry";
 import { SqlGuardError, guardSql } from "./sql-guard";
 
 export { SqlGuardError } from "./sql-guard";
+// SQL 실행 오류 — 가드 통과 후 DB 오류, 기존 가드 오류 처리 경로 호환을 위해 가드 오류의 하위 종류
+export class SqlExecError extends SqlGuardError {}
 
 const MAX_ROWS = 200;
 const TIMEOUT_MS = 5000;
@@ -20,7 +22,7 @@ export async function runSql(sql: string, account: Account) {
   } catch (e) {
     // DB 오류는 수정 가능한 입력 오류로 반환 — LLM 이 SQL 을 고쳐 재시도
     const message = sqlErrorMessage(e);
-    if (message) throw new SqlGuardError(message);
+    if (message) throw new SqlExecError(message);
     throw e;
   }
 }

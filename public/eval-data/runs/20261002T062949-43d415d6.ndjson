@@ -1,0 +1,4 @@
+{"type":"run","id":"20261002T062949-43d415d6","at":"2026-10-02T06:29:49.598Z","route":"agent","account":"prod-kim","request":"실행 기록 확인 [검증용]","mode":"draft","template":null,"report":null,"section":"summary","turns":1}
+{"type":"start","model":"claude-sonnet-5-5","account":"prod-kim","runId":"20261002T062949-43d415d6","ms":1}
+{"type":"error","error":"수정할 초안이 없습니다. 초안을 작성하거나 저장 보고서를 연 뒤 섹션을 지정하세요.","code":"no_draft","ms":37}
+{"type":"done","steps":0,"sources":[],"queries":[],"usage":{"input_tokens":0,"output_tokens":0},"ms":37}

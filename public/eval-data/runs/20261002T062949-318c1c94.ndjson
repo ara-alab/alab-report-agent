@@ -1,0 +1,4 @@
+{"type":"run","id":"20261002T062949-318c1c94","at":"2026-10-02T06:29:49.666Z","route":"agent","account":"prod-kim","request":"저장본 수정 기록 확인 [검증용]","mode":null,"template":null,"report":12,"section":null,"turns":1}
+{"type":"start","model":"claude-sonnet-5-5","account":"prod-kim","runId":"20261002T062949-318c1c94","ms":1}
+{"type":"error","error":"저장 보고서의 기안 기록을 현재 데이터로 다시 검증하지 못해 수정할 수 없습니다.","code":"report_not_editable","ms":66}
+{"type":"done","steps":0,"sources":[],"queries":[],"usage":{"input_tokens":0,"output_tokens":0},"ms":66}
