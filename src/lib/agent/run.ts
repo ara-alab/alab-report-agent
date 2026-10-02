@@ -308,7 +308,10 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
     messages.push({ role: "user", content: results });
   }
 
+  // 작성 모드 실패 — 새 초안·저장·서식 제안 없이 종료하면 1회 안내, 검증 오류 내용은 agent_draft 로그 소관
+  const draftFailed = opts.mode === "draft" && ctx.draft === restored.draft && ctx.saved === restored.saved && !ctx.proposed;
+  if (draftFailed) line({ type: "error", error: "초안을 작성하지 못했습니다. 요청 범위를 좁히거나 조건을 바꿔 다시 요청해 주세요.", code: "draft_failed" });
   // 본문 없이 종료 — 화면에 빈 말풍선 대신 오류 안내
-  if (!wrote) line({ type: "error", error: "답변을 작성하지 못했습니다. 요청 범위를 좁혀 다시 시도해 주세요.", code: "empty_answer" });
+  else if (!wrote) line({ type: "error", error: "답변을 작성하지 못했습니다. 요청 범위를 좁혀 다시 시도해 주세요.", code: "empty_answer" });
   line({ type: "done", model: last?.model, stop_reason: last?.stop_reason, steps: calls, sources: [...sources], queries: [...reusable.values()], usage });
 }

@@ -3150,6 +3150,8 @@
       var turnDraft = null;   // 개발용 구현 — 이번 턴 초안 기안 입력, 다음 요청의 assistant 이력에 보관
       var answer = '';   // 마지막 도구 호출 이후 본문 — 최종 답변 후보
       var failed = null;
+      var draftFailed = null;   // 작성 모드 최종 실패 안내
+      var draftRow = null;      // 초안 작성 진행 줄 — 재작성 호출이 같은 줄 사용
       var ctrl = agentAbort = new AbortController();
       var body = { messages: turns };
       if (demoUser.id) body.account = demoUser.id;
@@ -3169,16 +3171,33 @@
             steps.appendChild(note);
           }
           answer = '';
-          bubble.textContent = '조회 중…';
-          var row = document.createElement('div');
-          row.className = 'chat-step';
-          row.textContent = stepText(ev);
-          stepEls[ev.id] = row;
-          stepInputs[ev.id] = ev.input || {};
-          steps.appendChild(row);
+          // 초안 작성 — 서식 틀 선표시, 재작성 호출은 같은 진행 줄 재사용
+          if (ev.name === 'draft_report') {
+            bubble.textContent = '작성 중…';
+            if (ev.input && typeof ev.input.template === 'string') showTplSkeleton(ev.input.template);
+            if (!draftRow) {
+              draftRow = document.createElement('div');
+              draftRow.className = 'chat-step';
+              steps.appendChild(draftRow);
+            }
+            draftRow.textContent = '· 초안 작성';
+            stepEls[ev.id] = draftRow;
+            stepInputs[ev.id] = ev.input || {};
+          } else {
+            bubble.textContent = '조회 중…';
+            var row = document.createElement('div');
+            row.className = 'chat-step';
+            row.textContent = stepText(ev);
+            stepEls[ev.id] = row;
+            stepInputs[ev.id] = ev.input || {};
+            steps.appendChild(row);
+          }
         } else if (ev.type === 'tool_result') {
           var el = stepEls[ev.id];
-          if (el) {
+          // 초안 검증 실패 후 재작성은 미표시 — 성공만 표시
+          if (ev.name === 'draft_report') {
+            if (el && ev.ok) el.textContent += resultText(ev, stepInputs[ev.id] || {});
+          } else if (el) {
             el.textContent += resultText(ev, stepInputs[ev.id] || {});
             if (!ev.ok) el.classList.add('err');
           }
@@ -3191,11 +3210,8 @@
             steps.appendChild(cut);
           }
           answer = '';
+          // 재작성 지시는 사용자에게 진행 줄로 노출하지 않음
           bubble.textContent = '작성 중…';
-          var rt = document.createElement('div');
-          rt.className = 'chat-step';
-          rt.textContent = ev.reason === 'draft_missing' ? '· 초안 작성을 다시 요청하는 중' : '· 응답이 길어 다시 작성 중';
-          steps.appendChild(rt);
         } else if (ev.type === 'plan') {
           // 개발용 구현 — 조회 계획 한 줄 표시
           var pl = document.createElement('div');
@@ -3209,6 +3225,7 @@
           }), function (it, done) {
             if (agentAbort) return;
             done();
+            showTplSkeleton(it.id);
             sendAgentChat(it.name + ' 서식으로 작성해 주세요', { mode: 'draft', template: it.id });
           });
         } else if (ev.type === 'draft') {
@@ -3222,6 +3239,9 @@
         } else if (ev.type === 'done') {
           if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
           turnQueries = (ev.queries || []).filter(function (q) { return JSON.stringify(q.input).length <= AGENT_MAX_QUERY_INPUT; });
+        } else if (ev.type === 'error' && ev.code === 'draft_failed') {
+          // 작성 최종 실패 — 턴 실패로 처리하지 않고 답변·이력 보존, 안내는 1회
+          draftFailed = ev.error;
         } else if (ev.type === 'error') {
           failed = ev.error;
           // 개발용 구현 — 연 뒤 수정 불가로 판정된 저장본은 섹션 수정·갱신 대상에서 해제
@@ -3229,7 +3249,19 @@
         }
         chatLogEl.scrollTop = chatLogEl.scrollHeight;
       }, ctrl.signal).then(function () {
-        if (failed || !answer) throw new Error(failed || '응답이 비어 있습니다.');
+        if (failed || (!answer && !draftFailed)) throw new Error(failed || '응답이 비어 있습니다.');
+        if (draftFailed) {
+          if (answer) {
+            var fl = document.createElement('div');
+            fl.className = 'chat-step err';
+            fl.textContent = '⚠ ' + draftFailed;
+            steps.appendChild(fl);
+          } else {
+            bubble.classList.add('err');
+            bubble.textContent = '⚠ ' + draftFailed;
+            answer = draftFailed;
+          }
+        }
         // 긴 답변은 이력에 앞부분만 보관 — 서버 발화 길이 한도 초과로 다음 요청이 거부되지 않게
         var kept = answer.length > AGENT_MAX_CHARS ? answer.slice(0, AGENT_MAX_CHARS - 1) + '…' : answer;
         var reply = { role: 'assistant', content: kept };
@@ -3624,6 +3656,7 @@
       showBlankDoc();
       if (docnameEl) docnameEl.textContent = t.name;
       setDocPages([t.name]);
+      showTplSkeleton(t.id);
       sendAgentChat(ask, { mode: 'draft', template: t.id });
     }
 
@@ -3643,11 +3676,31 @@
     // ── 대화로 시작 흐름 — 빈 지면으로 전환한 뒤 요청을 Agent에 전달
     // 빈 지면 — 작성 단계 진입 즉시 띄우는 임시 문서, 기안 결과가 이 지면을 채움
     function showBlankDoc() {
+      skeletonId = null;
+      ++skeletonSeq;
       if (docPage) docPage.innerHTML = '';
       showDoc(true);
       applyZoom();
       setDocPages(['빈 문서']);
       if (docnameEl) docnameEl.textContent = baseDocName;
+    }
+
+    // 개발용 구현 — 서식 틀 선표시: 초안 도착 전 고른 서식의 빈 틀, 초안·수정 중 저장본이 있으면 미표시
+    var skeletonSeq = 0;
+    var skeletonId = null;
+    function showTplSkeleton(id) {
+      if (!id || id === skeletonId || lastDraft || editReport || !docPage) return;
+      var mine = ++skeletonSeq;
+      skeletonId = id;
+      AlabApi.getJson('templates/' + encodeURIComponent(id) + '/preview?' + acctParam()).then(function (j) {
+        if (mine !== skeletonSeq || lastDraft || editReport) return;
+        if (!docOn) showDoc(true);
+        docPage.innerHTML = j.html;
+        setDraftPage(true);
+        applyZoom();
+        if (docnameEl) docnameEl.textContent = j.template.name;
+        setDocPages([j.template.name]);
+      }, function () { if (mine === skeletonSeq) skeletonId = null; });
     }
 
     // 대화 시작 — 빈 입력·길이 초과는 전송하지 않음, 전송했으면 true
