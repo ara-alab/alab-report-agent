@@ -1464,13 +1464,31 @@
   .soon { font-family: var(--mono); font-size: 10.5px; color: var(--ink-muted); border: 1px solid var(--line-strong); border-radius: 8px; padding: 1px 4px; margin-left: 5px; }
   .btn-primary .soon { color: var(--on-accent); border-color: color-mix(in srgb, var(--on-accent) 45%, transparent); }
 
-  /* 시작 화면 — 문서 미생성 상태의 진입 카드, 1행 두 갈래 + 2행 대화 시작 */
+  /* 시작 화면 — 문서 미생성 상태의 메인 화면, 서비스 소개·사용 단계 안내 + 시작 방법 두 갈래 */
   .startpanel { flex: 0 0 auto; width: min(880px, 100%); margin: auto 0; display: flex; flex-direction: column; gap: 14px; }
   /* 안내 문구는 캔버스 바탕 위 — 라이트 캔버스는 중간 회색이라 흰 글자로는 AA 미달, 테마별 캔버스 잉크 사용 */
   .start-head { display: flex; flex-direction: column; gap: 5px; text-align: center; }
   .start-head .t { font-size: 19px; font-weight: 650; color: var(--on-canvas); }
   .start-head .s { font-size: 13.5px; color: var(--on-canvas); }
-  .start-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  /* 한글 문구는 어절 단위로 줄바꿈, 패널 폭 기준으로 단계 안내 배치 전환 */
+  .startpanel { container-type: inline-size; word-break: keep-all; }
+  /* 소개 패널 — 서비스 이름·소개·사용 단계를 카드와 같은 면에 올려 캔버스 바탕과 분리 */
+  .start-intro { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+  .start-intro .start-head { gap: 8px; padding: 26px 19px 22px; }
+  .start-brand { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; color: var(--accent-strong); }
+  .start-intro .start-head .t { font-size: 15px; font-weight: 500; color: var(--ink); }
+  /* 사용 단계 안내 — 소개 패널 아랫단의 읽기 전용 띠, 단계 사이 화살표는 한 줄 배치에서만 */
+  .start-steps { list-style: none; margin: 0; padding: 15px 19px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 22px; border-top: 1px solid var(--line); }
+  .start-steps li { position: relative; display: flex; flex-direction: column; gap: 4px; }
+  .start-steps li:not(:last-child)::after { content: "→"; position: absolute; top: 0; right: -17px; font-family: var(--mono); font-size: 13px; line-height: 20px; color: var(--ink-faint); }
+  .start-steps .n { width: 20px; height: 20px; border: 1px solid var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent-strong); }
+  .start-steps .t { font-size: 13.5px; font-weight: 650; color: var(--ink); }
+  .start-steps .s { font-size: 12.5px; line-height: 1.5; color: var(--ink-muted); }
+  @container (max-width: 700px) {
+    .start-steps { grid-template-columns: repeat(2, 1fr); }
+    .start-steps li::after { display: none; }
+  }
+  .start-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .start-card { display: flex; flex-direction: column; gap: 8px; padding: 21px 19px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); text-align: left; cursor: pointer; }
   .start-row .start-card { min-height: 168px; }
   .start-card:hover { border-color: var(--accent); }
@@ -1589,35 +1607,45 @@
       <div class="canvas" id="canvas">
         <!-- 시작 화면 — 문서 미생성 상태의 진입점, 생성 시 스테이지로 교체 -->
         <div class="startpanel" id="startPanel">
-          <div class="start-head">
-            <span class="t">새 보고서를 시작하세요</span>
-            <span class="s">서식을 먼저 고르거나, 데이터를 먼저 불러오거나, 무엇을 만들지 적어 주세요.</span>
+          <div class="start-intro">
+            <div class="start-head">
+              <h1 class="start-brand">A-Lab Report</h1>
+              <span class="t">MES/ERP 데이터로 보고서를 작성하고 수치까지 검증하는 보고서 Agent</span>
+            </div>
+            <ol class="start-steps" aria-label="사용 방법">
+              <li>
+                <span class="n" aria-hidden="true">1</span>
+                <span class="t">시작 방법 선택</span>
+                <span class="s">제공 템플릿 또는 빈 화면</span>
+              </li>
+              <li>
+                <span class="n" aria-hidden="true">2</span>
+                <span class="t">MES/ERP 데이터 자동 조회</span>
+                <span class="s">요청에 필요한 데이터를 조회</span>
+              </li>
+              <li>
+                <span class="n" aria-hidden="true">3</span>
+                <span class="t">템플릿에 배치해 작성</span>
+                <span class="s">조회 결과를 서식 항목에 배치</span>
+              </li>
+              <li>
+                <span class="n" aria-hidden="true">4</span>
+                <span class="t">Agent가 수치 검증</span>
+                <span class="s">본문 수치를 조회 결과와 대조</span>
+              </li>
+            </ol>
           </div>
           <div class="start-row">
             <button class="start-card" type="button" data-start="template">
               <span class="g">▥</span>
-              <span class="t">템플릿으로 시작</span>
-              <span class="s">기존 보고서 서식을 고른 뒤, 그 서식이 요구하는 데이터를 연결합니다.</span>
+              <span class="t">제공 템플릿으로 시작</span>
+              <span class="s">준비된 보고서 서식을 고른 뒤, 그 서식이 요구하는 데이터를 연결합니다.</span>
             </button>
-            <button class="start-card" type="button" data-start="data">
-              <span class="g">▦</span>
-              <span class="t">데이터로 시작</span>
-              <span class="s">사내 데이터베이스에서 표를 고르면 그 내용에 맞는 서식으로 작성합니다.</span>
+            <button class="start-card" type="button" data-start="blank">
+              <span class="g">▢</span>
+              <span class="t">빈 화면에서 시작</span>
+              <span class="s">서식 없이 빈 문서를 바로 엽니다. 대화창에 요청을 적어 작성을 이어 갑니다.</span>
             </button>
-            <button class="start-card" type="button" data-start="merge">
-              <span class="g">⧉</span>
-              <span class="t">보고서 통합</span>
-              <span class="s">이미 작성한 보고서 여러 건을 합쳐 상위 보고서로 다시 씁니다.</span>
-            </button>
-          </div>
-          <div class="start-card start-chat">
-            <span class="g">✦</span>
-            <span class="t">대화로 시작</span>
-            <span class="s">목적만 알려 주시면 필요한 데이터와 서식을 제안하고, 대화로 이어서 완성합니다.</span>
-            <div class="chat-box">
-              <textarea id="startInput" rows="1" placeholder="예: 최근 생산 실적을 공장장 보고용으로 정리해 줘"></textarea>
-              <button class="chat-send" id="startSend" type="button" title="보내기">↑</button>
-            </div>
           </div>
         </div>
         <div id="stage" style="display:none">
@@ -2511,13 +2539,14 @@
       agentHistory = [];
     }
     showDoc(false);
-    // 시작 카드 세 갈래 — 각자 전용 창을 염, 대화 갈래는 카드 밖 입력란 소관
+    // 시작 카드 두 갈래 — 서식 선택 창 또는 빈 지면, 데이터·통합 갈래는 메인 화면 미노출
     document.querySelectorAll('.start-card[data-start]').forEach(function (c) {
       c.addEventListener('click', function () {
         var kind = c.getAttribute('data-start');
         if (kind === 'data') openPick();
         else if (kind === 'merge') openMerge();
         else if (kind === 'template') openTpl();
+        else if (kind === 'blank') showBlankDoc();
       });
     });
     // 대화로 시작 — 입력란이 진입 수단, 빈 입력은 전송 없이 입력란 포커스
