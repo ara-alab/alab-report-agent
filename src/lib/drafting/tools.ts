@@ -8,7 +8,7 @@ import { getTemplate } from "./templates";
 
 export type TemplateCandidate = { id: string; name: string; reason: string };
 
-// 실행 문맥 — 조회 결과 캐시, 이번 실행의 마지막 기안 입력(거부 포함)·초안·저장 결과·서식 제안, 요청 원문과 작성 모드·고정 서식
+// 실행 문맥 — 조회 결과 캐시, 마지막 기안 입력(거부 포함)·초안(이전 턴 복원 포함)과 그 요청 원문·저장 결과·서식 제안, 이번 요청 원문과 작성 모드·고정 서식
 export type DraftContext = {
   cache: RunCache;
   requestText?: string;
@@ -16,6 +16,7 @@ export type DraftContext = {
   fixedTemplate?: string;
   lastInput?: Record<string, unknown>;
   draft?: Draft;
+  draftRequest?: string;
   saved?: { id: number; docNo: string };
   proposed?: TemplateCandidate[];
 };
@@ -127,6 +128,13 @@ function modeBlock(name: string, ctx: DraftContext): string | null {
 
 const draftOutcome = (d: Draft) => json({ ok: true, template: d.template.id, title: d.title, filledKeys: Object.keys(d.fills), numbers: d.numbers.length, warnings: d.warnings });
 
+// 이전 턴 초안 복원 — 복원한 조회 캐시로 기안 입력을 다시 검증, LLM 미호출·작성 모드 제약 미적용, 검증 실패 시 DraftError
+export async function restoreDraft(input: Record<string, unknown>, saved: DraftContext["saved"], requestText: string | undefined, account: Account, ctx: DraftContext): Promise<string> {
+  const d = await draftReport(input, account, ctx.cache);
+  Object.assign(ctx, { lastInput: input, draft: d, draftRequest: requestText, saved });
+  return draftOutcome(d).content;
+}
+
 export async function runDraftingTool(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<DraftingOutcome> {
   const blocked = modeBlock(name, ctx);
   if (blocked) return fail(blocked);
@@ -147,6 +155,7 @@ export async function runDraftingTool(name: string, input: Record<string, unknow
         throw e;
       }
       ctx.draft = d;
+      ctx.draftRequest = ctx.requestText;
       ctx.saved = undefined;
       return draftOutcome(d);
     }
@@ -154,7 +163,7 @@ export async function runDraftingTool(name: string, input: Record<string, unknow
       const d = ctx.draft;
       if (!d) return fail("이번 요청에서 작성한 초안이 없습니다. draft_report 로 먼저 초안을 작성하세요.");
       const r = await saveReport(
-        { id: ctx.saved?.id, templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: ctx.requestText, fills: d.fills, numbers: d.numbers },
+        { id: ctx.saved?.id, templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: ctx.draftRequest ?? ctx.requestText, fills: d.fills, numbers: d.numbers },
         account,
       );
       ctx.saved = { id: Number(r.id), docNo: String(r.docNo) };

@@ -32,11 +32,11 @@ npm run dev
 | `public/report-mockup/js/` | 목업 서버 연동 모듈 — 신규 화면 로직 분리 위치 |
 | `public/report-mockup/reports.html` | 저장 보고서 임시 목록 — 제목 선택 시 `index.html?report={id}&account={계정}`로 지면 열기 |
 | `src/app/api/health/` | 서버 상태 확인 — DB 연결·LLM 키 설정 여부 |
-| `src/app/api/agent/` | Agent 대화 진입점 — 계정·작성 모드·서식 지정 검증, 조회 계획·tool 호출·결과·출처를 NDJSON 스트림으로 중계(계약은 `docs/mvp-plan.md` §12) |
+| `src/app/api/agent/` | Agent 대화 진입점 — 계정·작성 모드·서식 지정·이전 턴 조회 검증, 조회 계획·tool 호출·결과·출처를 NDJSON 스트림으로 중계(계약은 `docs/mvp-plan.md` §12) |
 | `src/app/api/accounts/` | 샘플 계정 목록 |
 | `src/app/api/reports/` | 보고서 목록·저장·단건 조회 — 계정별 조회 범위, 저장 시 문서번호 발번, 단건 응답에 저장 값으로 다시 그린 지면 `html` |
 | `src/app/api/dev/` | 개발 확인용 route — 조회 함수·카탈로그·SQL·분석 tool·LLM 스트림·기안 tool 실행(`tools`)·모델 응답 재생(`agent-replay`), 운영 빌드에선 404 |
-| `src/lib/agent/` | Agent tool 루프 — 요청 검증, 계정 범위 tool 구성·실행, 작성·질문 모드 지시와 강제, 카탈로그 기반 시스템 프롬프트, 호출 상한 |
+| `src/lib/agent/` | Agent tool 루프 — 요청 검증, 계정 범위 tool 구성·실행, 이전 턴 조회 재실행, 작성·질문 모드 지시와 강제, 카탈로그 기반 시스템 프롬프트, 호출 상한 |
 | `src/lib/calendar.ts` | 날짜 관행 — 월 주차(KS X ISO 8601) 계산과 `resolve_week` tool |
 | `src/lib/llm/` | Anthropic 호출 계층 — 모델 폴백·취소·NDJSON 스트림 |
 | `src/lib/db/` | MES DB 접속 — 조회 전용 풀과 앱 쓰기 풀 분리 |
@@ -153,8 +153,8 @@ npm run dev
 - 진입: 시작 화면 하단 입력란 — 보내기 버튼과 Enter 키, 줄바꿈은 Shift+Enter
 - 빈 입력은 전송하지 않음
 - 요청 즉시 빈 지면으로 전환한 뒤 요청을 Agent에 전달 — 조회 진행·답변·출처는 우측 대화창에 표시
-- Agent가 `draft_report`로 초안을 만들면 지면에 표시, 저장은 대화로 요청(저장 버튼은 화면 연동 단계)
-- 대화창 개발용 연동: 모드 선택(자동·작성·질문), 조회 계획 한 줄, 모델이 제안한 서식 후보 카드 선택 시 해당 서식으로 작성 요청 — 화면 실구현 전 확인용
+- Agent가 `draft_report`로 초안을 만들면 지면에 표시, 저장은 대화 요청 또는 리본 저장 버튼(개발용 연동)
+- 대화창 개발용 연동: 모드 선택(자동·작성·질문), 조회 계획 한 줄, 모델이 제안한 서식 후보 카드 선택 시 해당 서식으로 작성 요청, 이전 턴 조회·최근 초안 이력 전송, 리본 저장 버튼 — 화면 실구현 전 확인용
 - 대화 답변 본문의 수치는 참조 검증 대상이 아님 — 검증은 초안 수치만
 
 ## 데이터 카탈로그 (데이터로 시작)

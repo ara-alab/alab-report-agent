@@ -21,6 +21,12 @@
     });
   }
 
+  function postJson(path, body) {
+    return fetch(url(path), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }).then(function (res) {
+      return res.ok ? res.json() : fail(res);
+    });
+  }
+
   // NDJSON 스트림 호출 — 줄 단위 객체를 onLine 으로 전달, 끝나면 resolve
   function stream(path, body, onLine, signal) {
     return fetch(url(path), {
@@ -59,5 +65,5 @@
     });
   }
 
-  window.AlabApi = { url: url, getJson: getJson, stream: stream };
+  window.AlabApi = { url: url, getJson: getJson, postJson: postJson, stream: stream };
 })();
