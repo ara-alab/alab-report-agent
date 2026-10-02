@@ -1,7 +1,7 @@
 .rpt { padding: 42px 50px 36px; font-family: '맑은 고딕', 'Malgun Gothic', 'HY중고딕', sans-serif; color: #111; font-size: 15px; line-height: 1.45; }
 .rpt-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
 .rpt-title { flex: 1; text-align: center; padding-top: 4px; }
-.rpt-title h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 6px; color: #000; }
+.rpt-title h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 6px; color: #000; word-break: keep-all; }
 .rpt-title .sub { margin-top: 8px; font-size: 15px; color: #222; letter-spacing: 1px; }
 .rpt-sign { flex: 0 0 auto; border-collapse: collapse; }
 .rpt-sign th { border: 1px solid #222; background: #dde7f0; font-size: 13px; font-weight: 700; padding: 4px 0; width: 64px; color: #000; }

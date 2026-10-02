@@ -1588,14 +1588,15 @@
           <div class="rgroup-label">서식</div>
         </div>
 
-        <!-- 문서 — 저장·출력, 내보내기는 미구현이라 준비중 표시 -->
+        <!-- 문서 — 저장·정합성 검증·HWPX 내보내기 -->
         <div class="rgroup">
           <div class="rgroup-tools">
             <!-- 저장 — 지면의 Agent 초안 명시 저장, 저장할 초안이 없으면 잠금(저장 상태 소관) -->
             <button class="tool-lg off" type="button" id="saveBtn" disabled><span class="g">▣</span><span class="t">저장</span></button>
             <!-- 개발용 구현 — 저장 보고서 정합성 검증, 수치별 근거 패널 구현 단계에서 교체 -->
             <button class="tool-lg" type="button" id="devVerifyBtn" data-needdoc><span class="g">✓</span><span class="t">정합성 검증</span></button>
-            <button class="tool-lg" type="button" data-needdoc data-soon><span class="g">⭳</span><span class="t">내보내기<span class="soon">준비중</span></span></button>
+            <!-- 내보내기 — 저장 보고서를 HWPX 파일로 내려받기, 저장 전 초안은 안내만 -->
+            <button class="tool-lg" type="button" id="exportBtn" data-needdoc title="저장 보고서를 HWPX 파일로 내려받기"><span class="g">⭳</span><span class="t">HWPX 내보내기</span></button>
           </div>
           <div class="rgroup-label">문서</div>
         </div>
@@ -3496,6 +3497,29 @@
         .then(function () { saving = false; syncSaveState(); });
     });
     // 개발용 구현 — 저장 보고서 수치를 출처 조회 재실행 결과와 대조, 요약과 불일치 항목을 토스트로 표시
+    var exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) exportBtn.addEventListener('click', function () {
+      if (exportBtn.disabled) return;
+      var id = editReport ? editReport.id : (lastDraftRef && lastDraftRef.saved ? lastDraftRef.saved.id : null);
+      if (!id) { showToast('저장한 보고서만 내보낼 수 있습니다'); return; }
+      var acct = AlabAccount.current();
+      // 파일 응답은 링크 이동으로 내려받기 — 오류 응답(JSON)은 fetch 로 먼저 확인
+      var path = 'reports/' + encodeURIComponent(id) + '/export?format=hwpx&account=' + encodeURIComponent(acct ? acct.id : '');
+      exportBtn.disabled = true;
+      fetch(AlabApi.url(path), { cache: 'no-store' }).then(function (res) {
+        if (!res.ok) return res.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || '내보내기에 실패했습니다'); });
+        var name = (/filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '') || [])[1] || 'report.hwpx';
+        return res.blob().then(function (blob) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+          showToast(name + ' 내려받기');
+        });
+      }).catch(function (e) { showToast(e.message); }).then(function () { exportBtn.disabled = false; });
+    });
     var devVerifyBtn = document.getElementById('devVerifyBtn');
     if (devVerifyBtn) devVerifyBtn.addEventListener('click', function () {
       if (devVerifyBtn.disabled) return;
