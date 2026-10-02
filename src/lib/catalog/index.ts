@@ -5,7 +5,7 @@ import { roQuery } from "@/lib/db";
 import { TABLE_DOCS } from "./tables";
 
 export { TABLE_DOCS, type TableDoc } from "./tables";
-export { KPIS, LIMIT_SOURCE, METRIC_SOURCES, type KpiDef, type LimitSource, type MetricSource } from "./metrics";
+export { KPIS, LIMIT_SOURCE, METRIC_SOURCES, type KpiDef, type LimitSource, type MetricSource, type NameSource } from "./metrics";
 
 export class CatalogError extends Error {}
 

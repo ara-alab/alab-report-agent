@@ -4,6 +4,7 @@ import type { Account } from "@/lib/accounts";
 import { KPIS, METRIC_SOURCES, type KpiDef, type MetricSource } from "@/lib/catalog";
 import { roQuery } from "@/lib/db";
 import { QueryParamError, codeParam, dateParam, periodParams, queryIdOf } from "@/lib/queries/registry";
+import { namesOf } from "./names";
 
 const DATE_DIMS = ["day", "week", "month"] as const;
 const DAY_MS = 86_400_000;
@@ -101,7 +102,7 @@ export async function analyzeKpi(raw: Record<string, unknown>, account: Account)
     if (!f) throw new QueryParamError(`${kpi.id} 는 ${key} 필터를 지원하지 않습니다. 가능한 필터: ${Object.keys(src.filters).join(", ")}`);
     filters.push({ key, expr: f.expr, value });
   }
-  const scope = filters.map((f) => ({ filter: f.key, value: f.value, basis: "요청" }));
+  const scope: { filter: string; value: string; valueName?: string; basis: string }[] = filters.map((f) => ({ filter: f.key, value: f.value, basis: "요청" }));
   const ds = src.defaultScope;
   // 범위 구분별 분해 조회 — 구분을 섞은 합계 비율은 산출하지 않음
   const splitByScope = !!ds && !filters.some((f) => f.key === ds.filter) && groupBy === ds.filter;
@@ -129,9 +130,17 @@ export async function analyzeKpi(raw: Record<string, unknown>, account: Account)
 
   const curMap = new Map((curRows?.rows ?? []).map((r) => [r.group, r.ratio]));
   const prevMap = new Map((prevRows?.rows ?? []).map((r) => [r.group, r.ratio]));
+  // 코드 명칭 — 집계 단위·범위 값에 명칭 원천이 선언된 경우만 groupName·valueName 부여
+  const groupSrc = groupBy ? src.names?.[groupBy] : undefined;
+  const groupNames = await namesOf(groupSrc, [...curMap.keys(), ...prevMap.keys()], account);
+  const named = (group: string | null) => (groupSrc ? { group, groupName: (group !== null && groupNames.get(group)) || null } : { group });
   const rows = rowsCompared
-    ? [...new Set([...curMap.keys(), ...prevMap.keys()])].map((group) => ({ group, current: curMap.get(group) ?? null, previous: prevMap.get(group) ?? null, ...change(kpi, curMap.get(group), prevMap.get(group)) }))
-    : [...curMap].map(([group, current]) => ({ group, current }));
+    ? [...new Set([...curMap.keys(), ...prevMap.keys()])].map((group) => ({ ...named(group), current: curMap.get(group) ?? null, previous: prevMap.get(group) ?? null, ...change(kpi, curMap.get(group), prevMap.get(group)) }))
+    : [...curMap].map(([group, current]) => ({ ...named(group), current }));
+  for (const sc of scope) {
+    const name = (await namesOf(src.names?.[sc.filter], [sc.value], account)).get(sc.value);
+    if (name) sc.valueName = name;
+  }
   const cur = curTotal!.rows[0]?.ratio;
   const prev = prevTotal?.rows[0]?.ratio;
 

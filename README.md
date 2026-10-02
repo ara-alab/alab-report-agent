@@ -43,8 +43,8 @@ npm run dev
 | `src/lib/llm/` | Anthropic 호출 계층 — 모델 폴백·취소·NDJSON 스트림 |
 | `src/lib/db/` | MES DB 접속 — 조회 전용 풀과 앱 쓰기 풀 분리 |
 | `src/lib/queries/` | 조회 함수 등록부·사전 정의 조회 4종·SQL 가드·`run_sql` |
-| `src/lib/catalog/` | 스키마 카탈로그 — DB 구조와 테이블·컬럼 설명 결합, KPI 공식·센서 규격 원천 정의 |
-| `src/lib/analysis/` | 분석 tool — `analyze_kpi` KPI·직전 기간 증감 계산, `check_limits` 규격 이탈 판정 |
+| `src/lib/catalog/` | 스키마 카탈로그 — DB 구조와 테이블·컬럼 설명 결합, KPI 공식·센서 규격·코드 명칭 원천 정의 |
+| `src/lib/analysis/` | 분석 tool — `analyze_kpi` KPI·직전 기간 증감 계산, `check_limits` 규격 이탈 판정, 결과 코드에 명칭 원천의 명칭 병기 |
 | `src/lib/drafting/` | 기안 tool(서식 추천·서식 후보 제안·초안·저장·목록)·수치 참조 해석과 참조 없는 숫자 검증, 서식 로더·렌더러 — 키 종류별 구조화 채움 값 검증·이스케이프 기입, 시스템·계정 키 |
 | `src/lib/reports/` | 보고서 저장소 — `alab_report` 스키마의 보고서·수치·기안 기록 저장, 문서번호 발번 |
 | `src/lib/provenance/` | 근거 조회·정합성 검증 — 저장 수치의 출처 조회 재실행, 값·분자·분모 대조 판정 |
