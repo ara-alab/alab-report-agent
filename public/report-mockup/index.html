@@ -1472,6 +1472,8 @@
   .attachments.rep-list { gap: 6px; }
   .rep-row { display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 7px; }
   .rep-row:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  /* 지면에 열린 보고서 — 가벼운 강조 */
+  .rep-row.on { border-color: var(--accent); background: var(--accent-weak); }
   .rep-t { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rep-m { font-size: 11.5px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rep-acts { display: flex; gap: 5px; margin-top: 4px; }
@@ -2588,6 +2590,15 @@
         row.appendChild(acts);
         reportListEl.appendChild(row);
       });
+      markOpenReport();
+    }
+    // 열린 보고서 표시 — 저장한 초안 또는 연 저장 보고서의 행 강조
+    function markOpenReport() {
+      if (!reportListEl) return;
+      var id = (lastDraftRef && lastDraftRef.saved && lastDraftRef.saved.id) || (editReport && editReport.id) || null;
+      reportListEl.querySelectorAll('.rep-row').forEach(function (r) {
+        r.classList.toggle('on', id !== null && r.getAttribute('data-id') === String(id));
+      });
     }
     function refreshReports() {
       if (!reportListEl || !window.AlabReports) return;
@@ -2668,7 +2679,7 @@
     if (window.ResizeObserver && docPage) new ResizeObserver(function () { if (pageBox && pageBox.classList.contains('draft')) applyZoom(); }).observe(docPage);
     function setDraftPage(on) {
       // 개발용 구현 — Agent 초안이 아닌 지면으로 바뀌면 명시 저장 대상 해제
-      if (!on) { lastDraft = null; lastDraftRef = null; lastDraftRecord = null; editReport = null; }
+      if (!on) { lastDraft = null; lastDraftRef = null; lastDraftRecord = null; editReport = null; markOpenReport(); }
       if (!pageBox) return;
       pageBox.classList.toggle('draft', on);
       if (!on) pageBox.style.height = '';
@@ -3084,7 +3095,14 @@
     var lastDraftRef = null;
     var lastDraftRequest = '';
     var lastDraftRecord = null;   // 개발용 구현 — 저장 시 함께 보내는 기안 기록(수정 재개용)
-    var editReport = null;   // 개발용 구현 — 수정 중인 저장 보고서 {id, docNo, editable}, 요청마다 report 로 전송
+    var editReport = null;   // 개발용 구현 — 수정 중인 저장 보고서 {id, docNo, editable, editBlock}, 요청마다 report 로 전송
+    // 개발용 구현 — 수정 불가 사유별 안내 문구
+    var EDIT_BLOCK_MSG = {
+      not_author: '작성 계정에서만 수정할 수 있습니다',
+      no_draft: '이 보고서는 수정에 필요한 기안 기록이 없어 수정할 수 없습니다',
+      not_replayable: '저장된 기안 기록을 현재 데이터로 다시 검증하지 못해 수정할 수 없습니다'
+    };
+    var EDIT_BLOCK_TAG = { not_author: '작성자 아님', no_draft: '기안 기록 없음', not_replayable: '재검증 실패' };
     function showDraft(d, steps) {
       lastDraft = d;
       if (!docOn) showDoc(true);
@@ -3207,7 +3225,7 @@
         } else if (ev.type === 'error') {
           failed = ev.error;
           // 개발용 구현 — 연 뒤 수정 불가로 판정된 저장본은 섹션 수정·갱신 대상에서 해제
-          if (ev.code === 'report_not_editable' && editReport) editReport.editable = false;
+          if (ev.code === 'report_not_editable' && editReport) { editReport.editable = false; editReport.editBlock = 'not_replayable'; }
         }
         chatLogEl.scrollTop = chatLogEl.scrollHeight;
       }, ctrl.signal).then(function () {
@@ -3255,6 +3273,7 @@
     // 개발용 구현 — 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
     function showSavedPage(id, docNo) {
       refreshReportsIfOpen();   // 저장 직후 좌측 레일 보고서 목록에 반영
+      markOpenReport();
       var acct = window.AlabAccount && AlabAccount.current();
       AlabApi.getJson('reports/' + encodeURIComponent(id) + '?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
         if (j.html && docPage) docPage.innerHTML = j.html;
@@ -3314,12 +3333,13 @@
         lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 수정 전까지 명시 저장 대상 아님
         lastDraftRef = null;
         lastDraftRecord = null;
-        editReport = { id: j.report.id, docNo: j.report.docNo, editable: !!j.report.editable };
+        editReport = { id: j.report.id, docNo: j.report.docNo, editable: !!j.report.editable, editBlock: j.report.editBlock || null };
+        markOpenReport();
         agentHistory = [];
         applyZoom();
         if (docnameEl) docnameEl.textContent = j.report.title;
         setDocPages([j.report.title]);
-        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo + (j.report.editable ? '' : ' (수정 불가)'));
+        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo + (j.report.editable ? '' : ' (수정 불가' + (EDIT_BLOCK_TAG[j.report.editBlock] ? ' · ' + EDIT_BLOCK_TAG[j.report.editBlock] : '') + ')'));
       }).catch(function (err) { showToast('보고서를 불러오지 못했습니다: ' + err.message); });
     }
     // 개발용 구현 — 지면 섹션(data-key) 선택 시 아래에 수정 요청 입력창 표시, 보내면 해당 키만 수정하도록 요청
@@ -3327,7 +3347,7 @@
       var sec = ev.target.closest && ev.target.closest('.rpt-key[data-key]');
       if (!sec || ev.target.closest('.dev-sec-box')) return;
       if (!lastDraftRef && !(editReport && editReport.editable)) {
-        showToast(editReport ? '이 보고서는 수정에 필요한 기안 기록이 없어 수정할 수 없습니다' : '수정할 Agent 초안이 없습니다');
+        showToast(editReport ? (EDIT_BLOCK_MSG[editReport.editBlock] || EDIT_BLOCK_MSG.no_draft) : '수정할 Agent 초안이 없습니다');
         return;
       }
       var old = docPage.querySelector('.dev-sec-box');

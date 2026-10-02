@@ -186,6 +186,9 @@ export async function listReports(account: Account, { limit = 50 }: { limit?: nu
   return rows as unknown as ReportSummary[];
 }
 
+// 수정 불가 사유 — 작성 계정 아님, 기안 기록 없음, 기안 기록 재검증 실패
+export type EditBlock = "not_author" | "no_draft" | "not_replayable";
+
 // 저장 수치 행 — DECIMAL 컬럼은 문자열로 수신, 출처 조회는 도구 이름·입력
 export type StoredNumber = {
   key: string;
@@ -217,8 +220,9 @@ export async function getReport(id: number, account: Account) {
   const stored = (typeof fills === "string" ? JSON.parse(fills) : fills) as Fills;
   return {
     ...meta,
-    // 수정 가능 — 작성 계정 본인이고 기안 기록이 있는 보고서
+    // 수정 가능 — 작성 계정 본인이고 기안 기록이 있는 보고서, 불가 사유는 작성자 아님 우선
     editable: Boolean(hasDraft) && meta.accountId === account.id,
+    editBlock: (meta.accountId !== account.id ? "not_author" : !hasDraft ? "no_draft" : null) as EditBlock | null,
     fills: { ...stored, ...systemFills({ docNo: String(row.docNo), date: String(issuedDate) }) },
     numbers: numbers.map((n) => ({ ...n, call: typeof n.call === "string" ? JSON.parse(n.call) : n.call }) as StoredNumber),
   };
