@@ -31,7 +31,8 @@ const readJson = async (rel) => JSON.parse(await readFile(path.join(ROOT, rel), 
 function commitInfo() {
   try {
     const head = execSync("git rev-parse --short HEAD", { cwd: ROOT }).toString().trim();
-    const dirty = execSync("git status --porcelain", { cwd: ROOT }).toString().trim() !== "";
+    // 측정 산출물 경로 제외
+    const dirty = execSync("git status --porcelain -- . ':(exclude)public/eval-data'", { cwd: ROOT }).toString().trim() !== "";
     return { commit: head, dirty };
   } catch {
     return { commit: null, dirty: null };
@@ -297,13 +298,17 @@ async function main() {
     const def = await readJson("scripts/eval/metrics.json");
     const registry = await readJson("public/report-mockup/data/templates/index.json");
     const templates = new Map(registry.templates.map((t) => [t.id, { ...t, keys: { ...registry.common, ...t.keys } }]));
-    const requests = [];
+    // 요청별 최신 결과 누적 — 선택 실행한 요청만 교체, 요약은 누적 결과 전체 기준
+    const byId = new Map((results.metrics?.requests ?? []).map((x) => [x.id, x]));
     for (const r of def.requests.filter((x) => selected(x.id))) {
       console.log(`요청 ${r.id} 실행`);
-      requests.push(await runRequest(r, def, templates));
+      byId.set(r.id, { ...(await runRequest(r, def, templates)), at: new Date().toISOString(), ...meta });
     }
+    const requests = def.requests.map((r) => byId.get(r.id)).filter(Boolean);
     const anomaly = await measureAnomalies(def.anomalies);
-    results.metrics = { at: new Date().toISOString(), ...meta, partial: !!args.only, summary: summarize(def, requests, anomaly), requests, anomaly };
+    // 정의된 요청 중 결과 없는 요청 존재 시 부분 측정
+    const partial = requests.length < def.requests.length;
+    results.metrics = { at: new Date().toISOString(), ...meta, partial, summary: summarize(def, requests, anomaly), requests, anomaly };
   }
 
   results.updatedAt = new Date().toISOString();
