@@ -215,6 +215,12 @@
   .doc-name.editing { border-color: var(--accent); background: var(--surface); cursor: text; outline: none; }
   .save-state { font-family: var(--mono); font-size: 13px; color: var(--good); display: flex; align-items: center; gap: 5px; }
   .save-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--good); }
+  /* 저장 상태 단계 — 저장 대상 없음은 숨김, 미저장은 주의색, 저장 중은 중립색, 저장됨은 기본색에 문서번호 */
+  .save-state[data-state="none"] { display: none; }
+  .save-state[data-state="unsaved"] { color: var(--annot); }
+  .save-state[data-state="unsaved"]::before { background: var(--annot); }
+  .save-state[data-state="saving"] { color: var(--ink-muted); }
+  .save-state[data-state="saving"]::before { background: var(--ink-faint); }
   .qa { display: flex; align-items: center; gap: 2px; }
   .qa .spacer { flex: 1; }
   .iconbtn {
@@ -1033,6 +1039,8 @@
   .chat-opt .sys { grid-row: span 2; font-family: var(--mono); font-size: 11px; color: var(--accent-deep); background: var(--accent-weak); border-radius: 4px; padding: 3px 6px; }
   .chat-opt .nm { font-size: 14px; font-weight: 650; color: var(--ink); }
   .chat-opt .sub { font-size: 12.5px; line-height: 1.45; color: var(--ink-muted); }
+  /* 배지 없는 카드 — 이름과 설명을 한 열로 쌓음 */
+  .chat-opt.plain { grid-template-columns: 1fr; }
   /* 선택 확정 — 고른 항목만 강조로 남기고 나머지는 잉크 단계를 낮춤, 재선택 불가
      투명도로 흐리면 라이트에서 AA 미달 — 색 단계로 구분 */
   .chat-opts.done .chat-opt { cursor: default; }
@@ -1047,6 +1055,14 @@
   .chat-quick { display: flex; flex-wrap: wrap; gap: 5px; }
   .chat-chip { font-family: var(--mono); font-size: 12px; color: var(--ink-muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; padding: 3px 9px; cursor: pointer; }
   .chat-chip:hover { color: var(--accent-strong); border-color: var(--accent); }
+  /* 작성 모드 스위치 — 입력란 위 한 줄, 고른 모드의 설명 병기 */
+  .chat-moderow { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: var(--ink-muted); }
+  .chat-mode { display: inline-flex; flex: 0 0 auto; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+  .chat-mode button { border: 0; background: var(--surface-2); color: var(--ink-muted); font-family: var(--sans); font-size: 12.5px; padding: 3px 11px; cursor: pointer; }
+  .chat-mode button + button { border-left: 1px solid var(--line-strong); }
+  .chat-mode button:hover { color: var(--ink); }
+  .chat-mode button.on { background: var(--accent-strong); color: var(--on-accent); }
+  .chat-moderow .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-faint); }
   .chat-box { display: flex; align-items: flex-end; gap: 6px; padding: 6px 6px 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
   .chat-box:focus-within { border-color: var(--accent); }
   .chat-box textarea { flex: 1; min-width: 0; max-height: 120px; padding: 3px 0; border: none; background: transparent; resize: none; color: var(--ink); font-family: var(--sans); font-size: 14.5px; line-height: 1.5; }
@@ -1397,6 +1413,10 @@
   .chat-steps { display: flex; flex-direction: column; gap: 2px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-muted); }
   .chat-steps:empty { display: none; }
   .chat-step.err { color: var(--danger); }
+  /* 조회 계획 — 단계 번호와 실행 예정 도구 묶음, 뒤따르는 진행 줄의 머리 */
+  .chat-plan { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 3px; }
+  .chat-plan .ph { margin-right: 2px; font-weight: 700; color: var(--ink); }
+  .chat-plan .pt { padding: 0 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
   .chat-step.chat-note { font-family: inherit; font-size: 12.5px; color: var(--ink-faint); white-space: pre-wrap; }
   /* 답변 최소 서식 — 줄은 렌더러가 블록으로 분리 */
   .bubble.agent .md-h { font-weight: 700; margin: 6px 0 2px; }
@@ -1517,7 +1537,7 @@
     <!-- titlebar / quick access -->
     <div class="titlebar">
       <span class="doc-name" id="docname">새 보고서</span>
-      <span class="save-state">저장됨</span>
+      <span class="save-state" id="saveState" data-state="none" aria-live="polite"></span>
       <span class="spacer"></span>
       <button class="iconbtn" id="undoBtn" type="button" title="실행 취소"><span class="g">↶</span></button>
       <button class="iconbtn" id="redoBtn" type="button" title="다시 실행"><span class="g">↷</span></button>
@@ -1560,11 +1580,11 @@
           <div class="rgroup-label">서식</div>
         </div>
 
-        <!-- 문서 — 출력, 동작은 미구현이라 준비중 표시 -->
+        <!-- 문서 — 저장·출력, 내보내기는 미구현이라 준비중 표시 -->
         <div class="rgroup">
           <div class="rgroup-tools">
-            <!-- 개발용 구현 — Agent 초안 명시 저장, UI 실구현 단계에서 교체 -->
-            <button class="tool-lg" type="button" id="devSaveBtn" data-needdoc><span class="g">▣</span><span class="t">저장</span></button>
+            <!-- 저장 — 지면의 Agent 초안 명시 저장, 저장할 초안이 없으면 잠금(저장 상태 소관) -->
+            <button class="tool-lg off" type="button" id="saveBtn" disabled><span class="g">▣</span><span class="t">저장</span></button>
             <!-- 개발용 구현 — 저장 보고서 정합성 검증, 수치별 근거 패널 구현 단계에서 교체 -->
             <button class="tool-lg" type="button" id="devVerifyBtn" data-needdoc><span class="g">✓</span><span class="t">정합성 검증</span></button>
             <button class="tool-lg" type="button" data-needdoc data-soon><span class="g">⭳</span><span class="t">내보내기<span class="soon">준비중</span></span></button>
@@ -1687,9 +1707,15 @@
               <button class="chat-chip" type="button" data-soon>템플릿 추천</button>
               <button class="chat-chip" type="button" data-soon>문단 다시 쓰기</button>
             </div>
-            <!-- 개발용 구현 — 작성 모드 지정, UI 실구현 단계에서 교체 -->
-            <div id="devMode" style="font-size:12px">
-              모드 <select id="devModeSel"><option value="">자동</option><option value="draft">작성</option><option value="ask">질문</option></select>
+            <!-- 작성 모드 스위치 — 자동은 Agent 판단, 작성은 초안 작성, 질문은 초안 없이 답변 -->
+            <div class="chat-moderow">
+              <span id="chatModeLabel">모드</span>
+              <div class="chat-mode" id="chatMode" role="radiogroup" aria-labelledby="chatModeLabel">
+                <button class="on" type="button" role="radio" aria-checked="true" data-mode="">자동</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="draft">작성</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="ask">질문</button>
+              </div>
+              <span class="hint" id="chatModeHint"></span>
             </div>
             <div class="chat-box">
               <textarea id="chatInput" rows="2" placeholder="보고서 작성 지시를 입력하세요"></textarea>
@@ -2262,12 +2288,11 @@
       zPlus.addEventListener('click', function () { zSet(zCurrent() + 10); });
       document.addEventListener('click', zClose);
     }
-    // 헤더 문서명 인라인 편집 — 클릭/Enter 진입, Enter·blur 적용(빈값 복원), Escape 취소. 실제 저장은 엔진 배선
+    // 헤더 문서명 인라인 편집 — 클릭/Enter 진입, Enter·blur 적용(빈값 복원), Escape 취소. 화면 표기만 바뀌고 저장 상태와 무관
     var docName = document.querySelector('.titlebar .doc-name');
     var saveState = document.querySelector('.titlebar .save-state');
     if (docName) {
       var docNamePrev = '';
-      var docNameSaveTimer = null;
       var enterNameEdit = function () {
         if (docName.classList.contains('editing')) return;
         docNamePrev = docName.textContent.trim();
@@ -2285,11 +2310,6 @@
         docName.textContent = name || docNamePrev;
         docName.classList.remove('editing');
         docName.removeAttribute('contenteditable');
-        if (name && name !== docNamePrev && saveState) {
-          saveState.textContent = '저장 중…';
-          if (docNameSaveTimer) clearTimeout(docNameSaveTimer);
-          docNameSaveTimer = setTimeout(function () { saveState.textContent = '저장됨'; }, 900);
-        }
       };
       var cancelNameEdit = function () {
         docName.textContent = docNamePrev;
@@ -2311,7 +2331,7 @@
     // 페이지명 인라인 편집(독립 배선) — 더블클릭 진입, Enter·blur 적용(빈값 복원), Escape 취소. 단일 클릭은 페이지 선택 유지. 실제 저장은 엔진 배선
     var pagesEl = document.getElementById('pages');
     if (pagesEl) {
-      var editingPname = null, pnamePrev = '', pnameSaveTimer = null;
+      var editingPname = null, pnamePrev = '';
       pagesEl.querySelectorAll('.pname').forEach(function (p) { p.title = '더블클릭하여 이름 변경'; });
       var commitPname = function () {
         if (!editingPname) return;
@@ -2320,11 +2340,6 @@
         el.textContent = name || pnamePrev;
         el.classList.remove('editing');
         el.removeAttribute('contenteditable');
-        if (name && name !== pnamePrev && saveState) {
-          saveState.textContent = '저장 중…';
-          if (pnameSaveTimer) clearTimeout(pnameSaveTimer);
-          pnameSaveTimer = setTimeout(function () { saveState.textContent = '저장됨'; }, 900);
-        }
       };
       var cancelPname = function () {
         if (!editingPname) return;
@@ -2678,11 +2693,13 @@
     // 초안 내용 높이 변화(글꼴·표 배치 확정) 시 지면 높이 재계산
     if (window.ResizeObserver && docPage) new ResizeObserver(function () { if (pageBox && pageBox.classList.contains('draft')) applyZoom(); }).observe(docPage);
     function setDraftPage(on) {
-      // 개발용 구현 — Agent 초안이 아닌 지면으로 바뀌면 명시 저장 대상 해제
+      // Agent 초안·저장본이 아닌 지면으로 바뀌면 저장 대상·수정 중 저장본 해제
       if (!on) { lastDraft = null; lastDraftRef = null; lastDraftRecord = null; editReport = null; markOpenReport(); }
-      if (!pageBox) return;
-      pageBox.classList.toggle('draft', on);
-      if (!on) pageBox.style.height = '';
+      if (pageBox) {
+        pageBox.classList.toggle('draft', on);
+        if (!on) pageBox.style.height = '';
+      }
+      syncSaveState();
     }
     var docOn = false;   // 작성 단계 여부 — 드로어 전송 경로·전환 안내 노출 기준
     function showDoc(on) {
@@ -2700,6 +2717,7 @@
         // 지면이 채워지면 남은 선택지는 지난 단계 — 뒤늦은 클릭으로 문서가 바뀌지 않게 잠금
         if (chatLogEl) Array.prototype.slice.call(chatLogEl.querySelectorAll('.chat-opts:not(.done)'))
           .forEach(function (o) { o.classList.add('done'); });
+        syncSaveState();
         return;
       }
       // 시작 화면 복귀 = 문서 폐기 — 지면·페이지 목록·문서명을 초기 상태로 되돌림
@@ -2986,7 +3004,7 @@
       opts.className = 'chat-opts';
       items.forEach(function (it) {
         var card = document.createElement('button');
-        card.className = 'chat-opt';
+        card.className = 'chat-opt' + (it.sys ? '' : ' plain');
         card.type = 'button';
         card.innerHTML = (it.sys ? '<span class="sys">' + it.sys + '</span>' : '') +
           '<span class="nm">' + it.nm + '</span>' +
@@ -3041,11 +3059,45 @@
       }
       return turns;
     }
-    // 개발용 구현 — 모드 스위치 값, 인자로 넘긴 지정이 우선
+    // 작성 모드 스위치 — 고른 모드가 요청의 mode, 자동은 미지정(Agent 판단)
+    var chatModeEl = document.getElementById('chatMode');
+    var chatModeHint = document.getElementById('chatModeHint');
+    var chatMode = '';
+    var MODE_INFO = {
+      '': { hint: '요청에 따라 Agent가 판단', ph: '보고서 작성 지시를 입력하세요' },
+      draft: { hint: '보고서 초안을 작성', ph: '작성할 보고서를 입력하세요' },
+      ask: { hint: '초안 없이 질문에 답변', ph: '데이터에 대해 질문하세요' }
+    };
+    function setChatMode(mode, focus) {
+      chatMode = MODE_INFO[mode] ? mode : '';
+      if (chatModeEl) Array.prototype.forEach.call(chatModeEl.querySelectorAll('button'), function (b) {
+        var on = b.getAttribute('data-mode') === chatMode;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;   // 그룹 안 이동은 화살표 소관
+        if (on && focus) b.focus();
+      });
+      if (chatModeHint) chatModeHint.textContent = MODE_INFO[chatMode].hint;
+      if (chatInputEl) chatInputEl.placeholder = MODE_INFO[chatMode].ph;
+    }
+    if (chatModeEl) {
+      chatModeEl.addEventListener('click', function (ev) {
+        var b = ev.target.closest ? ev.target.closest('button[data-mode]') : null;
+        if (b) setChatMode(b.getAttribute('data-mode'));
+      });
+      chatModeEl.addEventListener('keydown', function (ev) {
+        var step = ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? 1 : ev.key === 'ArrowLeft' || ev.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        ev.preventDefault();
+        var modes = Array.prototype.map.call(chatModeEl.querySelectorAll('button'), function (b) { return b.getAttribute('data-mode'); });
+        setChatMode(modes[(modes.indexOf(chatMode) + step + modes.length) % modes.length], true);
+      });
+    }
+    setChatMode('');
+    // 요청 지정값 — 인자로 넘긴 지정(서식 고정 등)이 모드 스위치보다 우선
     function agentOptions(opts) {
       if (opts) return opts;
-      var sel = document.getElementById('devModeSel');
-      return sel && sel.value ? { mode: sel.value } : {};
+      return chatMode ? { mode: chatMode } : {};
     }
     // 조회 진행 한 줄 — 도구·핵심 입력(기간·대상), 결과 도착 시 행 수 또는 오류 덧붙임
     function stepText(ev) {
@@ -3123,7 +3175,7 @@
       });
     }
 
-    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송, opts 는 작성 모드·서식 지정(개발용)
+    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송, opts 는 작성 모드·서식 지정(없으면 모드 스위치 값)
     function sendAgentChat(textArg, opts) {
       var fromInput = typeof textArg !== 'string';
       var text = fromInput ? (chatInputEl ? chatInputEl.value.trim() : '') : textArg.trim();
@@ -3213,17 +3265,32 @@
           // 재작성 지시는 사용자에게 진행 줄로 노출하지 않음
           bubble.textContent = '작성 중…';
         } else if (ev.type === 'plan') {
-          // 개발용 구현 — 조회 계획 한 줄 표시
+          // 조회 계획 — 단계 번호와 실행 예정 도구 묶음, 같은 도구는 횟수로 합침
           var pl = document.createElement('div');
-          pl.className = 'chat-step';
-          pl.textContent = '· 조회 계획 ' + ev.step + '단계: ' + ev.calls.map(function (c) { return TOOL_LABELS[c.name] || c.name; }).join(', ');
+          pl.className = 'chat-plan';
+          var ph = document.createElement('span');
+          ph.className = 'ph';
+          ph.textContent = '조회 계획 ' + ev.step + '단계';
+          pl.appendChild(ph);
+          var planOrder = [], planCount = {};
+          (ev.calls || []).forEach(function (c) {
+            var label = TOOL_LABELS[c.name] || c.name;
+            if (!planCount[label]) { planCount[label] = 0; planOrder.push(label); }
+            planCount[label]++;
+          });
+          planOrder.forEach(function (label) {
+            var pt = document.createElement('span');
+            pt.className = 'pt';
+            pt.textContent = label + (planCount[label] > 1 ? ' ×' + planCount[label] : '');
+            pl.appendChild(pt);
+          });
           steps.appendChild(pl);
         } else if (ev.type === 'templates') {
-          // 개발용 구현 — 서식 후보 카드, 고르면 그 서식으로 작성 요청
-          pushChatOpts('서식 후보', ev.candidates.map(function (c) {
+          // 서식 후보 카드 — 서식명과 추천 사유, 고르면 그 서식 고정으로 작성 요청
+          pushChatOpts('요청에 맞는 서식 후보입니다. 하나를 고르면 그 서식으로 작성합니다.', ev.candidates.map(function (c) {
             return { id: c.id, name: c.name, sys: '', nm: escHtml(c.name), sub: escHtml(c.reason) };
           }), function (it, done) {
-            if (agentAbort) return;
+            if (agentAbort) { showToast('응답이 끝난 뒤 선택해 주세요'); return; }
             done();
             showTplSkeleton(it.id);
             sendAgentChat(it.name + ' 서식으로 작성해 주세요', { mode: 'draft', template: it.id });
@@ -3233,8 +3300,10 @@
           turnDraft = lastDraftRef = { input: ev.input };
           lastDraftRecord = ev.record || null;
           lastDraftRequest = text;
+          syncSaveState();
         } else if (ev.type === 'saved') {
           if (lastDraftRef) lastDraftRef.saved = { id: ev.id, docNo: ev.docNo };
+          syncSaveState();
           showSavedPage(ev.id, ev.docNo);
         } else if (ev.type === 'done') {
           if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
@@ -3302,7 +3371,28 @@
       });
       AlabAccount.load().then(openSavedReport, function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
     }
-    // 개발용 구현 — 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
+    // 저장 상태 — 타이틀바 표시와 리본 저장 단추를 지면 상태에 맞춤
+    // 저장 대상은 지면의 Agent 초안, 연 저장본(editReport)은 문서번호 표시와 수정 초안의 갱신 대상
+    var saveBtn = document.getElementById('saveBtn');
+    var saving = false;
+    function syncSaveState() {
+      var draft = !!(lastDraft && lastDraftRef);
+      var editNo = editReport ? editReport.docNo : '';   // 연 저장본 — 수정 초안도 같은 문서번호로 저장
+      var docNo = draft ? (lastDraftRef.saved ? lastDraftRef.saved.docNo : '') : editNo;
+      var kind = !docOn ? 'none' : saving ? 'saving' : docNo ? 'saved' : draft ? 'unsaved' : 'none';
+      if (saveState) {
+        saveState.setAttribute('data-state', kind);
+        saveState.textContent = kind === 'saving' ? '저장 중…' : kind === 'saved' ? '저장됨 · ' + docNo : kind === 'unsaved' ? '저장 안 됨' + (editNo ? ' · ' + editNo : '') : '';
+      }
+      if (saveBtn) {
+        var can = docOn && draft && !saving;
+        saveBtn.disabled = !can;
+        saveBtn.classList.toggle('off', !can);
+        saveBtn.title = saving ? '저장 중' : !draft ? '저장할 Agent 초안이 없습니다' : docNo || editNo ? '같은 문서번호로 저장' : '초안 저장';
+      }
+    }
+    syncSaveState();
+    // 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
     function showSavedPage(id, docNo) {
       refreshReportsIfOpen();   // 저장 직후 좌측 레일 보고서 목록에 반영
       markOpenReport();
@@ -3313,11 +3403,9 @@
         showToast('보고서를 저장했습니다 · ' + docNo);
       }).catch(function (err) { showToast('저장했으나 지면을 갱신하지 못했습니다: ' + err.message); });
     }
-    // 개발용 구현 — 리본 저장 버튼으로 최근 Agent 초안 명시 저장, 저장 결과는 대화 이력 초안에도 반영
-    var devSaveBtn = document.getElementById('devSaveBtn');
-    if (devSaveBtn) devSaveBtn.addEventListener('click', function () {
-      if (devSaveBtn.disabled) return;   // 개발용 구현 — 저장 응답 전 재클릭으로 인한 중복 발번 방지
-      if (!lastDraft || !lastDraftRef) { showToast('저장할 Agent 초안이 없습니다'); return; }
+    // 리본 저장 단추 — 최근 Agent 초안 명시 저장, 저장 결과는 대화 이력 초안에도 반영
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      if (saving || !lastDraft || !lastDraftRef) return;   // 저장 응답 전 재클릭으로 인한 중복 발번 방지
       var d = lastDraft;
       var ref = lastDraftRef;
       var body = { templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: lastDraftRequest, fills: d.fills, numbers: d.numbers };
@@ -3326,12 +3414,13 @@
       // 저장본 수정 중이면 같은 보고서 갱신
       if (ref.saved) body.id = ref.saved.id;
       else if (editReport && editReport.editable) body.id = editReport.id;
-      devSaveBtn.disabled = true;
+      saving = true;
+      syncSaveState();
       AlabApi.postJson('reports', body).then(function (j) {
         ref.saved = { id: j.report.id, docNo: j.report.docNo };
         showSavedPage(j.report.id, j.report.docNo);
       }).catch(function (err) { showToast('저장하지 못했습니다: ' + err.message); })
-        .then(function () { devSaveBtn.disabled = false; });
+        .then(function () { saving = false; syncSaveState(); });
     });
     // 개발용 구현 — 저장 보고서 수치를 출처 조회 재실행 결과와 대조, 요약과 불일치 항목을 토스트로 표시
     var devVerifyBtn = document.getElementById('devVerifyBtn');
@@ -3362,12 +3451,13 @@
         if (!docOn) showDoc(true);
         docPage.innerHTML = j.html;
         setDraftPage(true);
-        lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 수정 전까지 명시 저장 대상 아님
+        lastDraft = null;   // 열어 본 저장본은 수정 전까지 명시 저장 대상 아님, 문서번호만 저장 상태에 표시
         lastDraftRef = null;
         lastDraftRecord = null;
         editReport = { id: j.report.id, docNo: j.report.docNo, editable: !!j.report.editable, editBlock: j.report.editBlock || null };
         markOpenReport();
         agentHistory = [];
+        syncSaveState();
         applyZoom();
         if (docnameEl) docnameEl.textContent = j.report.title;
         setDocPages([j.report.title]);
