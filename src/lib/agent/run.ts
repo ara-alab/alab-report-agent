@@ -280,17 +280,17 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
         id: block.id,
         name: block.name,
         ok: !outcome.isError,
-        ...(outcome.isError ? { error: outcome.content } : {}),
+        ...(outcome.isError ? { error: outcome.content, errorKind: outcome.errorKind ?? null, issues: outcome.issues ?? [] } : {}),
         queryId: outcome.queryId,
         rowCount: outcome.rowCount,
         truncated: outcome.truncated,
         elapsedMs: outcome.elapsedMs,
       });
-      // 초안 작성 기록 — 부분 수정 여부·보낸 채움 키·통과 여부, 채움 값 본문은 미기록
+      // 초안 작성 기록 — 부분 수정 여부·보낸 채움 키·통과 여부·오류 범주, 채움 값 본문은 미기록
       if (block.name === "draft_report") {
         const input = block.input as Record<string, unknown>;
         const fills = input.fills && typeof input.fills === "object" ? Object.keys(input.fills) : [];
-        console.log(JSON.stringify({ type: "agent_draft", route, step, revise: input.revise === true, keys: fills, ok: !outcome.isError, error: outcome.isError ? outcome.content.slice(0, 300) : null }));
+        console.log(JSON.stringify({ type: "agent_draft", route, step, revise: input.revise === true, keys: fills, ok: !outcome.isError, errorKind: outcome.errorKind ?? null, issues: outcome.issues ?? [], error: outcome.isError ? outcome.content.slice(0, 300) : null }));
       }
       if (ctx.draft && ctx.draft !== before.draft) line({ type: "draft", toolId: block.id, ...ctx.draft, input: ctx.draftInput, record: draftRecord(ctx) });
       if (ctx.saved && ctx.saved !== before.saved) line({ type: "saved", toolId: block.id, ...ctx.saved });

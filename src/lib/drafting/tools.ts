@@ -2,7 +2,7 @@
 import "server-only";
 import type { Account } from "@/lib/accounts";
 import { ReportError, listReports, saveReport, type DraftRecord } from "@/lib/reports";
-import { DraftError, draftReport, templateCatalog, type Draft } from "./draft";
+import { DraftError, draftReport, templateCatalog, type Draft, type DraftIssue } from "./draft";
 import type { RunCache } from "./refs";
 import { getTemplate } from "./templates";
 
@@ -91,10 +91,14 @@ export const DRAFTING_TOOLS = [
 const NAMES = new Set<string>(DRAFTING_TOOLS.map((t) => t.name));
 export const isDraftingTool = (name: string) => NAMES.has(name);
 
-export type DraftingOutcome = { content: string; isError: boolean };
+// 오류 범주 — 초안 검증 범주와 기안 tool 사용 조건(작성 모드·섹션 수정·revise 순서) 위반, 저장 오류
+export type DraftingErrorKind = DraftIssue["kind"] | "rule" | "report";
+export type DraftingOutcome = { content: string; isError: boolean; errorKind?: DraftingErrorKind; issues?: { at: string; kind: DraftIssue["kind"] }[] };
 
 const json = (v: unknown): DraftingOutcome => ({ content: JSON.stringify(v), isError: false });
-const fail = (msg: string): DraftingOutcome => ({ content: msg, isError: true });
+const fail = (msg: string, errorKind: DraftingErrorKind): DraftingOutcome => ({ content: msg, isError: true, errorKind });
+// 초안 검증 실패 — 대표 범주는 첫 오류 범주, 키별 범주는 issues
+const draftFail = (e: DraftError, msg: string): DraftingOutcome => ({ ...fail(msg, e.issues[0]?.kind ?? "format"), issues: e.issues.map(({ at, kind }) => ({ at, kind })) });
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 // 고쳐 쓰기 — 직전 입력에 보낸 최상위 필드와 fills 키만 덮어씀
@@ -107,14 +111,14 @@ function reviseInput(base: Record<string, unknown>, patch: Record<string, unknow
 // 서식 제안 — 후보 수·중복·서식 존재·이유 길이 검증
 async function proposeTemplates(input: Record<string, unknown>, ctx: DraftContext): Promise<DraftingOutcome> {
   const list = input.candidates;
-  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_CANDIDATES) return fail(`candidates 는 1~${MAX_CANDIDATES}개 배열이어야 합니다.`);
+  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_CANDIDATES) return fail(`candidates 는 1~${MAX_CANDIDATES}개 배열이어야 합니다.`, "format");
   const out: TemplateCandidate[] = [];
   for (const c of list) {
     const t = isObj(c) && typeof c.id === "string" ? await getTemplate(c.id) : null;
-    if (!t) return fail(`알 수 없는 서식입니다: ${isObj(c) ? String(c.id) : String(c)} — recommend_templates 결과의 id 를 쓰세요`);
-    if (out.some((o) => o.id === t.id)) return fail(`서식이 중복되었습니다: ${t.id}`);
+    if (!t) return fail(`알 수 없는 서식입니다: ${isObj(c) ? String(c.id) : String(c)} — recommend_templates 결과의 id 를 쓰세요`, "template");
+    if (out.some((o) => o.id === t.id)) return fail(`서식이 중복되었습니다: ${t.id}`, "template");
     const reason = isObj(c) && typeof c.reason === "string" ? c.reason.trim() : "";
-    if (!reason || reason.length > REASON_CHARS) return fail(`${t.id}: reason 은 ${REASON_CHARS}자 이하 한 문장이어야 합니다.`);
+    if (!reason || reason.length > REASON_CHARS) return fail(`${t.id}: reason 은 ${REASON_CHARS}자 이하 한 문장이어야 합니다.`, "format");
     out.push({ id: t.id, name: t.name, reason });
   }
   ctx.proposed = out;
@@ -165,23 +169,23 @@ export async function restoreDraft(input: Record<string, unknown>, saved: DraftC
 
 export async function runDraftingTool(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<DraftingOutcome> {
   const blocked = modeBlock(name, ctx);
-  if (blocked) return fail(blocked);
+  if (blocked) return fail(blocked, "rule");
   try {
     if (name === "recommend_templates") return json(await templateCatalog(account));
     if (name === "propose_templates") return await proposeTemplates(input, ctx);
     if (name === "draft_report") {
       const sectionErr = sectionBlock(input, ctx);
-      if (sectionErr) return fail(sectionErr);
-      if (input.revise === true && !ctx.lastInput) return fail("고칠 직전 draft_report 입력이 없습니다. revise 없이 전체 입력으로 호출하세요.");
+      if (sectionErr) return fail(sectionErr, "rule");
+      if (input.revise === true && !ctx.lastInput) return fail("고칠 직전 draft_report 입력이 없습니다. revise 없이 전체 입력으로 호출하세요.", "rule");
       const merged = input.revise === true ? reviseInput(ctx.lastInput!, input) : input;
       // 서식 고정 — 다른 서식 초안은 검증 전에 거부, 직전 입력으로 남기지 않음
-      if (ctx.fixedTemplate && merged.template !== ctx.fixedTemplate) return fail(`이번 요청의 서식은 ${ctx.fixedTemplate} 로 지정되어 있습니다. template 을 ${ctx.fixedTemplate} 로 바꿔 다시 호출하세요.`);
+      if (ctx.fixedTemplate && merged.template !== ctx.fixedTemplate) return fail(`이번 요청의 서식은 ${ctx.fixedTemplate} 로 지정되어 있습니다. template 을 ${ctx.fixedTemplate} 로 바꿔 다시 호출하세요.`, "rule");
       ctx.lastInput = merged;
       let d: Draft;
       try {
         d = await draftReport(merged, account, ctx.cache);
       } catch (e) {
-        if (e instanceof DraftError) return fail(`${e.message}\n오류가 난 키만 고쳐 revise: true 와 함께 다시 호출하세요.`);
+        if (e instanceof DraftError) return draftFail(e, `${e.message}\n오류가 난 키만 고쳐 revise: true 와 함께 다시 호출하세요.`);
         throw e;
       }
       ctx.draft = d;
@@ -192,7 +196,7 @@ export async function runDraftingTool(name: string, input: Record<string, unknow
     }
     if (name === "save_report") {
       const d = ctx.draft;
-      if (!d) return fail("이번 요청에서 작성한 초안이 없습니다. draft_report 로 먼저 초안을 작성하세요.");
+      if (!d) return fail("이번 요청에서 작성한 초안이 없습니다. draft_report 로 먼저 초안을 작성하세요.", "rule");
       const r = await saveReport(
         {
           id: ctx.saved?.id ?? ctx.target?.id,
@@ -214,9 +218,10 @@ export async function runDraftingTool(name: string, input: Record<string, unknow
       const limit = Number.isInteger(input.limit) ? Number(input.limit) : 20;
       return json({ reports: await listReports(account, { limit }) });
     }
-    return fail(`사용할 수 없는 도구입니다: ${name}`);
+    return fail(`사용할 수 없는 도구입니다: ${name}`, "rule");
   } catch (e) {
-    if (e instanceof DraftError || e instanceof ReportError) return fail(e.message);
+    if (e instanceof DraftError) return draftFail(e, e.message);
+    if (e instanceof ReportError) return fail(e.message, "report");
     throw e;
   }
 }
