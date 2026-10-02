@@ -1485,6 +1485,8 @@
   /* 더미 페이지 — 엔진 미탑재라 배율 조작이 없어 캔버스 폭에 맞추고 A4 비율만 유지 */
   #stage { flex: 0 0 auto; width: min(794px, 100%); margin-left: auto; margin-right: auto; }
   #page { width: 100%; aspect-ratio: 794 / 1123; overflow: hidden; }
+  /* Agent 초안 지면 — 연속 스크롤 지면 전 임시로 A4 비율 해제, 높이는 applyZoom 이 내용 높이로 지정 */
+  #page.draft { aspect-ratio: auto; }
 
 </style>
 
@@ -2446,6 +2448,7 @@
       zoomScale = k;
       stageEl.style.width = Math.round(794 * k) + 'px';
       docPage.style.transform = 'scale(' + k + ')';
+      if (pageBox && pageBox.classList.contains('draft')) pageBox.style.height = Math.ceil(docPage.offsetHeight * k) + 'px';
       var zv = document.querySelector('.statusbar .zval');
       if (zv && document.activeElement !== zv) zv.value = Math.round(k * 100) + '%';
     }
@@ -2463,6 +2466,14 @@
     var docnameEl = document.getElementById('docname');
     var basePageNames = pageThumbs.map(function (t) { return t.querySelector('.pname').textContent; });
     var baseDocName = docnameEl ? docnameEl.textContent : '';
+    // 초안 지면 전환 — 켜면 내용 높이만큼 세로 확장, 끄면 A4 비율 복귀
+    // 초안 내용 높이 변화(글꼴·표 배치 확정) 시 지면 높이 재계산
+    if (window.ResizeObserver && docPage) new ResizeObserver(function () { if (pageBox && pageBox.classList.contains('draft')) applyZoom(); }).observe(docPage);
+    function setDraftPage(on) {
+      if (!pageBox) return;
+      pageBox.classList.toggle('draft', on);
+      if (!on) pageBox.style.height = '';
+    }
     var docOn = false;   // 작성 단계 여부 — 드로어 전송 경로·전환 안내 노출 기준
     function showDoc(on) {
       docOn = on;
@@ -2483,6 +2494,7 @@
       }
       // 시작 화면 복귀 = 문서 폐기 — 지면·페이지 목록·문서명을 초기 상태로 되돌림
       if (docPage) docPage.innerHTML = '';
+      setDraftPage(false);
       setDocPages(basePageNames);
       if (docnameEl) docnameEl.textContent = baseDocName;
       if (chatLogEl) Array.prototype.slice.call(chatLogEl.querySelectorAll('.chat-msg[data-stage]'))
@@ -2815,7 +2827,8 @@
       query_production_summary: '생산실적 집계', query_defect_breakdown: '불량 유형 집계',
       query_equipment_status: '설비 상태 집계', query_material_flow: '자재 수불 집계',
       analyze_kpi: 'KPI 계산', check_limits: '규격 이탈 판정', resolve_week: '주차 기간 확인',
-      list_datasets: '데이터 목록 확인', describe_table: '테이블 구조 확인', run_sql: 'SQL 조회'
+      list_datasets: '데이터 목록 확인', describe_table: '테이블 구조 확인', run_sql: 'SQL 조회',
+      recommend_templates: '서식 확인', draft_report: '보고서 초안 작성', save_report: '보고서 저장', list_reports: '보고서 목록 확인'
     };
     // 조회 진행 한 줄 — 도구·핵심 입력(기간·대상), 결과 도착 시 행 수 또는 오류 덧붙임
     function stepText(ev) {
@@ -2832,6 +2845,7 @@
     function resultText(ev, inp) {
       if (!ev.ok) return ' → 오류, 입력 수정 후 재시도';
       if (ev.name === 'analyze_kpi') return !inp.groupBy ? ' → 합계 산출' : ev.rowCount ? ' → ' + ev.rowCount + '개 구분' : ' → 데이터 없음';
+      if (ev.name === 'draft_report') return ' → 지면 표시';
       return typeof ev.rowCount === 'number' ? ' → ' + ev.rowCount + '행' : ' → 완료';
     }
     function escHtml(s) {
@@ -2858,6 +2872,28 @@
       if (inList) out.push('</ul>');
       return out.join('');
     }
+    // 기안 초안 — 서버 렌더 HTML(서버에서 이스케이프 완료)을 지면에 표시, 저장 연동 전 임시 표시
+    var lastDraft = null;
+    function showDraft(d, steps) {
+      lastDraft = d;
+      if (!docOn) showDoc(true);
+      if (docPage) docPage.innerHTML = d.html;
+      setDraftPage(true);
+      applyZoom();
+      if (docnameEl) docnameEl.textContent = d.title;
+      setDocPages([d.title]);
+      var row = document.createElement('div');
+      row.className = 'chat-step';
+      row.textContent = '· 초안: ' + d.template.name + ' · 수치 ' + d.numbers.length + '건 · 경고 ' + d.warnings.length + '건';
+      steps.appendChild(row);
+      d.warnings.forEach(function (w) {
+        var el = document.createElement('div');
+        el.className = 'chat-step err';
+        el.textContent = '  - ' + w;
+        steps.appendChild(el);
+      });
+    }
+
     // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송
     function sendAgentChat(textArg) {
       var fromInput = typeof textArg !== 'string';
@@ -2911,6 +2947,24 @@
             el.textContent += resultText(ev, stepInputs[ev.id] || {});
             if (!ev.ok) el.classList.add('err');
           }
+        } else if (ev.type === 'retry') {
+          // 출력 한도로 잘린 응답 — 그 전 본문은 중간 안내로 옮기고 재작성 표시
+          if (answer.trim()) {
+            var cut = document.createElement('div');
+            cut.className = 'chat-step chat-note';
+            cut.textContent = answer.trim();
+            steps.appendChild(cut);
+          }
+          answer = '';
+          bubble.textContent = '작성 중…';
+          var rt = document.createElement('div');
+          rt.className = 'chat-step';
+          rt.textContent = '· 응답이 길어 다시 작성 중';
+          steps.appendChild(rt);
+        } else if (ev.type === 'draft') {
+          showDraft(ev, steps);
+        } else if (ev.type === 'saved') {
+          showToast('보고서를 저장했습니다 · ' + ev.docNo);
         } else if (ev.type === 'done') {
           if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
         } else if (ev.type === 'error') failed = ev.error;
@@ -2948,7 +3002,25 @@
         // 시작 화면에선 대화 로그가 감춰져 있어 안내를 쌓지 않음 — 칩 표기로 충분
         if (docOn) pushChat(signer() + ' 계정으로 전환했습니다. 이후 대화와 새로 만드는 문서에 이 계정이 적용됩니다.', false);
       });
-      AlabAccount.load().catch(function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
+      AlabAccount.load().then(openSavedReport, function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
+    }
+    // 임시 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 목록 화면 연동 전 확인용
+    function openSavedReport() {
+      var q = new URLSearchParams(location.search);
+      var id = q.get('report');
+      if (!id) return;
+      if (q.get('account')) AlabAccount.select(q.get('account'));
+      var acct = AlabAccount.current();
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
+        if (!j.html) throw new Error('서식을 찾을 수 없습니다');
+        if (!docOn) showDoc(true);
+        docPage.innerHTML = j.html;
+        setDraftPage(true);
+        applyZoom();
+        if (docnameEl) docnameEl.textContent = j.report.title;
+        setDocPages([j.report.title]);
+        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo);
+      }).catch(function (err) { showToast('보고서를 불러오지 못했습니다: ' + err.message); });
     }
     // 드로어 전송 — 시작 화면에선 「대화로 시작」과 같은 경로로 빈 지면부터 염
     function sendDrawer() {
@@ -3003,6 +3075,7 @@
         if (!tpl) { showToast('보고서 서식을 불러오지 못했습니다'); return; }
         var a = aggregate(list);
         docPage.innerHTML = bindTpl(tpl, weeklyDocData(a, dailyData.period, list));
+        setDraftPage(false);
         showDoc(true);
         applyZoom();
         setDocPages(['주간 집계서']);
@@ -3293,6 +3366,7 @@
       loadTemplate(TPL_BRIEF, function (tpl) {
         if (!tpl) { showToast('보고서 서식을 불러오지 못했습니다'); return; }
         docPage.innerHTML = bindTpl(tpl, briefDocData(ds));
+        setDraftPage(false);
         showDoc(true);
         applyZoom();
         setDocPages([ds.doc.title]);

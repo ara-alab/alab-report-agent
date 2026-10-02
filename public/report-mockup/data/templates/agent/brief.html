@@ -1,0 +1,53 @@
+<div class="rpt">
+  <div class="rpt-top">
+    <div class="rpt-title">
+      <h1>{{doc_title}}</h1>
+      <div class="sub">{{period_label}} ({{period_from}} ~ {{period_to}})</div>
+    </div>
+    <table class="rpt-sign">
+      <tr><th>기안</th><th>검토</th><th>승인</th></tr>
+      <tr><td>{{writer_short}}</td><td>{{reviewer}}</td><td>대기</td></tr>
+    </table>
+  </div>
+
+  <table class="rpt-meta">
+    <tr>
+      <th>문서번호</th><td>{{doc_no}}</td>
+      <th>작 성 일</th><td>{{issued_at}}</td>
+    </tr>
+    <tr>
+      <th>기안부서</th><td>{{dept}}</td>
+      <th>작 성 자</th><td>{{writer}}</td>
+    </tr>
+    <tr>
+      <th>보고대상</th><td>{{audience}}</td>
+      <th>작성근거</th><td>{{basis}}</td>
+    </tr>
+  </table>
+
+  <div class="rpt-sec">
+    <h2>1. 데이터 개요</h2>
+    {{data_overview}}
+  </div>
+
+  <div class="rpt-sec">
+    <h2>2. 핵심 지표</h2>
+    {{kpi_stats}}
+  </div>
+
+  <div class="rpt-sec">
+    <h2>3. {{group_title}} 집계</h2>
+    {{group_table}}
+  </div>
+
+  <div class="rpt-sec">
+    <h2>4. 확인된 특이 항목</h2>
+    {{findings}}
+  </div>
+
+  <div class="rpt-foot">
+    <div>위와 같이 분석 결과를 보고합니다.</div>
+    <div class="date">{{sign_date}}</div>
+    <div class="who">{{dept}} {{writer}} (인)</div>
+  </div>
+</div>

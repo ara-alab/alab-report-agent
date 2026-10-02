@@ -6,6 +6,7 @@ import { analysisTools, runAnalysis } from "@/lib/analysis";
 import { CalendarError, RESOLVE_WEEK_TOOL, WEEK_RULE, monthWeeks } from "@/lib/calendar";
 import { CATALOG_TOOLS, CatalogError, describeTable, listDatasets } from "@/lib/catalog";
 import { sqlErrorMessage } from "@/lib/db";
+import { DRAFTING_TOOLS, isDraftingTool, runDraftingTool, type DraftContext } from "@/lib/drafting/tools";
 import { QueryParamError, listQueries, runQuery } from "@/lib/queries";
 import { RUN_SQL_TOOL, SqlGuardError, runSql } from "@/lib/queries/sql";
 
@@ -30,6 +31,7 @@ export function buildTools(account: Account): Anthropic.Tool[] {
     ...CATALOG_TOOLS.map((t) => ({ ...t, input_schema: t.input_schema as Anthropic.Tool.InputSchema })),
     { ...RESOLVE_WEEK_TOOL, input_schema: RESOLVE_WEEK_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema },
     { ...RUN_SQL_TOOL, input_schema: RUN_SQL_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema },
+    ...DRAFTING_TOOLS.map((t) => ({ ...t, input_schema: t.input_schema as unknown as Anthropic.Tool.InputSchema })),
   ];
 }
 
@@ -49,11 +51,18 @@ function fit(result: Record<string, unknown> & { rows?: unknown[] }): string {
   return text;
 }
 
-async function dispatch(name: string, input: Record<string, unknown>, account: Account): Promise<ToolOutcome> {
+// 조회 결과 보관 — 모델에 축약해 넘긴 결과도 기안 참조는 전체 결과에서 해석
+function keep(ctx: DraftContext, queryId: string, name: string, input: unknown, result: unknown) {
+  ctx.cache.set(queryId, { name, input, result });
+}
+
+async function dispatch(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<ToolOutcome> {
+  if (isDraftingTool(name)) return runDraftingTool(name, input, account, ctx);
   if (name === "list_datasets") return { content: fit({ datasets: await listDatasets(account.allowedTables) }), isError: false };
   if (name === "resolve_week") return { content: JSON.stringify({ rule: WEEK_RULE, weeks: monthWeeks(String(input.month ?? "")) }), isError: false };
   if (name === "describe_table") return { content: fit(await describeTable(String(input.table ?? ""), account.allowedTables)), isError: false };
   const analysis = await runAnalysis(name, input, account);
+  if (analysis) keep(ctx, analysis.queryId, name, input, analysis);
   if (analysis) return { content: fit(analysis), isError: false, queryId: analysis.queryId, rowCount: analysis.rows.length, truncated: analysis.truncated, elapsedMs: analysis.elapsedMs };
   const out =
     name === "run_sql"
@@ -62,12 +71,13 @@ async function dispatch(name: string, input: Record<string, unknown>, account: A
         ? await runQuery(name, input)
         : null;
   if (!out) return { content: `사용할 수 없는 도구입니다: ${name}`, isError: true };
+  keep(ctx, out.queryId, name, input, out);
   return { content: fit(out), isError: false, queryId: out.queryId, rowCount: out.rows.length, truncated: out.truncated, elapsedMs: out.elapsedMs };
 }
 
-export async function executeTool(name: string, input: unknown, account: Account): Promise<ToolOutcome> {
+export async function executeTool(name: string, input: unknown, account: Account, ctx: DraftContext): Promise<ToolOutcome> {
   try {
-    return await dispatch(name, (input ?? {}) as Record<string, unknown>, account);
+    return await dispatch(name, (input ?? {}) as Record<string, unknown>, account, ctx);
   } catch (e) {
     if (e instanceof QueryParamError || e instanceof SqlGuardError || e instanceof CatalogError || e instanceof CalendarError) return { content: e.message, isError: true };
     // SQL 수준 오류는 모델이 조건을 고쳐 재시도, 연결 장애 등은 요청 실패로 전파

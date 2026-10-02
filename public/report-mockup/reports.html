@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>저장 보고서 목록</title>
+<!-- 임시 확인용 — 저장 보고서 목록(GET /api/reports) 표시, 행 선택 시 목업 지면으로 열기, 조회 UI 연동 전까지 사용 -->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; color: #222; background: #fff; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1100px; }
+  th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f3f3f3; }
+  td.n { text-align: right; }
+  #msg { margin: 10px 0; color: #a00; }
+</style>
+</head>
+<body>
+<h1>저장 보고서 목록 (임시)</h1>
+<label>계정 <select id="acct"></select></label>
+<div id="msg"></div>
+<table>
+  <thead><tr><th>ID</th><th>문서번호</th><th>제목</th><th>작성자</th><th>작성 계정</th><th>기간</th><th>작성 시각</th><th>수정 시각</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<script src="js/api.js"></script>
+<script>
+(function () {
+  var acctEl = document.getElementById('acct');
+  var rowsEl = document.getElementById('rows');
+  var msgEl = document.getElementById('msg');
+  function cell(tr, text, cls) {
+    var td = document.createElement('td');
+    td.textContent = text == null ? '' : String(text);
+    if (cls) td.className = cls;
+    tr.appendChild(td);
+    return td;
+  }
+  // 목록 표시 — 제목은 목업 지면 임시 진입점(?report=&account=) 링크
+  function load(account) {
+    msgEl.textContent = '';
+    rowsEl.innerHTML = '';
+    AlabApi.getJson('reports?account=' + encodeURIComponent(account)).then(function (j) {
+      if (!j.reports.length) msgEl.textContent = '저장된 보고서가 없습니다.';
+      j.reports.forEach(function (r) {
+        var tr = document.createElement('tr');
+        cell(tr, r.id, 'n');
+        cell(tr, r.docNo);
+        var a = document.createElement('a');
+        a.href = 'index.html?report=' + encodeURIComponent(r.id) + '&account=' + encodeURIComponent(account);
+        a.textContent = r.title;
+        cell(tr, '').appendChild(a);
+        cell(tr, r.writer);
+        cell(tr, r.accountId);
+        cell(tr, (r.periodFrom || '') + ' ~ ' + (r.periodTo || ''));
+        cell(tr, r.createdAt);
+        cell(tr, r.updatedAt);
+        rowsEl.appendChild(tr);
+      });
+    }).catch(function (err) { msgEl.textContent = '목록을 불러오지 못했습니다: ' + err.message; });
+  }
+  // 계정 선택 — 주소 인자, 목업 저장 계정, 서버 기본 계정 순
+  AlabApi.getJson('accounts').then(function (j) {
+    var saved = null;
+    try { saved = localStorage.getItem('alab.account'); } catch { /* 저장소 차단 */ }
+    var want = new URLSearchParams(location.search).get('account') || saved || j.defaultId;
+    j.accounts.forEach(function (a) {
+      var o = document.createElement('option');
+      o.value = a.id;
+      o.textContent = a.id + ' · ' + a.dept + ' ' + a.name + ' ' + a.title + (a.role === 'reviewer' ? ' (전체 조회)' : '');
+      acctEl.appendChild(o);
+    });
+    if (want && j.accounts.some(function (a) { return a.id === want; })) acctEl.value = want;
+    acctEl.addEventListener('change', function () { load(acctEl.value); });
+    load(acctEl.value);
+  }).catch(function (err) { msgEl.textContent = '계정 목록을 불러오지 못했습니다: ' + err.message; });
+})();
+</script>
+</body>
+</html>

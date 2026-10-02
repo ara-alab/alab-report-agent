@@ -119,6 +119,11 @@ MES/ERP 데이터를 조회·분석해 기업 서식 보고서를 자동 기안�
 | --- | --- | --- |
 | 화면 연동 | `public/report-mockup/js/` | Agent 호출·스트림 표시, 지면 갱신, 근거 패널, 계정 전환, 보고서 목록 |
 
+- 저장 보고서 지면: `GET /api/reports/{id}?account={계정}` 응답의 `html`(저장된 채움 값으로 서식 재렌더, 조회·LLM 미호출) — 목록은 `GET /api/reports?account={계정}`
+- 목록 화면 연동 전 임시 진입점: 목업 주소에 `?report={id}&account={계정}` 지정 시 해당 보고서를 지면에 표시
+- 임시 목록 페이지: `/report-mockup/reports.html?account={계정}` — ID·문서번호·제목·작성자·기간·작성/수정 시각 표, 제목 선택 시 위 진입점으로 열기
+- Agent 초안 지면은 임시로 A4 비율을 해제하고 내용 높이만큼 세로 확장 — 연속 스크롤 지면·드로어 패널 변경은 별도 작업
+
 ## 7. Agent tool
 
 | tool | 역할 |
@@ -161,3 +166,38 @@ MES/ERP 데이터를 조회·분석해 기업 서식 보고서를 자동 기안�
 
 - 측정 결과는 시연 화면 또는 별도 리포트로 제시
 - 측정 요청 세트는 시드 이상 사례 기반 요청과 이와 무관한 일반 요청을 함께 포함
+
+## 10. 대화 맥락 유지 (3일차 화면 연동 단계 적용)
+
+- 현상: 후속 요청에서 직전 턴과 같은 조건의 조회를 다시 실행 — 화면 이력은 텍스트 발화만 보관(`public/report-mockup/index.html` `agentHistory`), 조회 결과 캐시는 요청 단위(`src/lib/agent/run.ts`), 프롬프트 규칙 15가 재조회 지시
+- 방식: 화면이 턴별 조회 호출(이름·입력)을 이력에 함께 보관해 전송, 서버가 LLM 호출 전 재실행해 캐시 복원과 이전 턴 tool 호출·결과 블록 재구성
+- 근거: 조회 ID는 tool 이름·입력의 해시(`src/lib/queries/registry.ts` `queryIdOf`)라 재실행 시 같은 ID, 이전 턴 참조 그대로 유효
+- 재실행은 DB 조회만 수행, LLM 미호출 — 결과는 재실행 시점 DB 값
+
+| 단계 | 위치 | 변경 |
+| --- | --- | --- |
+| 1 | 화면 `sendAgentChat` | 성공한 `tool_call`·`tool_result` 중 조회 tool만 `{name, input}` 으로 모아 assistant 이력에 `queries` 로 보관, 기안·저장·목록 tool 제외 |
+| 2 | `src/app/api/agent/route.ts` `parseMessages` | assistant 발화의 선택 필드 `queries` 검증 — 조회 tool 이름만 허용, 턴당·전체 건수 상한, 입력 JSON 크기 상한 |
+| 3 | `src/lib/agent/run.ts` | 루프 전 이전 턴 `queries` 재실행(`executeTool`, 같은 `ctx`), 메시지를 사용자 발화 → assistant tool 호출 → tool 결과 → assistant 답변 순으로 재구성, 재실행 오류 조회는 제외하고 로그 기록 |
+| 4 | `src/lib/agent/prompt.ts` 규칙 15 | 「이전 턴 조회 결과는 같은 조회 ID로 참조 가능, 같은 조건은 다시 조회하지 않음」으로 변경 |
+| 5 | `run.ts` `agent_step` 로그 | 단계별 tool 이름 기록 — 재조회 여부를 로그로 판정 |
+
+- 입력 토큰: 이전 조회 결과만큼 증가, 프롬프트 캐시(시스템·대화 끝 중단점)로 재사용분 상쇄
+- 합성 tool 호출 블록은 사고 블록 없이 전달 — 기본 설정에서 API 수용 확인됨(재생 후 실제 호출 시험)
+- 검증: 재생 route로 2턴 대화에서 2턴째 조회 0건·이전 조회 ID 참조 초안 통과 확인(LLM 미호출), 실호출 1회로 「9월 2일 생산 실적 간략 요약」 → 「간략한 보고서 형태로 작성」 2턴째 조회 tool 호출 0건 확인
+
+## 11. 초안 명시 저장 (3일차 화면 연동 단계 적용)
+
+- 방식: 화면이 보관한 초안을 저장 버튼으로 기존 `POST /api/reports` 에 전송 — LLM 저장 요청 없이 사용자가 명시 저장, 서버 변경 없음
+- 초안 원천: `draft` 이벤트(`src/lib/agent/run.ts`)의 서식·제목·기간·채움 값·수치 — 화면 `lastDraft` 보관(`public/report-mockup/index.html` `showDraft`)
+
+| 단계 | 위치 | 변경 |
+| --- | --- | --- |
+| 1 | 화면 `sendAgentChat` | `saved` 이벤트의 `id`·`docNo` 를 현재 초안의 저장 상태로 보관, 새 `draft` 이벤트 수신 시 미저장 상태로 전환 |
+| 2 | 화면 저장 버튼 | `lastDraft` 를 `{templateId, title, periodFrom, periodTo, requestText, fills, numbers}` 로 변환해 `POST /api/reports`, 저장 상태에 `id` 가 있으면 함께 전송해 같은 문서번호로 갱신 |
+| 3 | 화면 저장 결과 | 응답의 `id`·`docNo` 를 저장 상태에 반영, 문서번호 표시, 저장 보고서 열기(`?report=`)와 같은 상태로 전환 |
+
+- 갱신은 작성 계정 본인만 가능, 서식 변경 불가 — 다른 계정·서식이면 서버 오류 문구 표시(`src/lib/reports/index.ts` `saveReport`)
+- 제약: `lastDraft` 는 페이지 메모리 보관이라 새로고침 시 저장 전 초안 소실
+- 제약: 저장 시 서버는 채움 값 구조만 검사하고 수치와 조회 결과의 일치는 대조하지 않음 — 4일차 근거 검증(저장 조회 조건 재조회 대조)으로 확인
+- 검증: 재생 스트림 초안 표시 후 버튼 저장 → 목록 반영·문서번호 발급, 같은 초안 재저장 시 문서번호 유지, LLM 저장 직후 버튼 저장 시 신규 발번 없음
