@@ -24,6 +24,11 @@ export type ToolOutcome = {
 
 const allowedQueries = (a: Account) => listQueries().filter((q) => q.tables.every((t) => a.allowedTables.includes(t)));
 
+// 재실행 가능 조회 — 결과에 조회 ID가 붙는 조회 함수·분석 tool·SQL 조회, 이전 턴 조회 복원 대상
+export function isReusableQuery(name: string, account: Account): boolean {
+  return name === RUN_SQL_TOOL.name || allowedQueries(account).some((q) => q.name === name) || analysisTools(account).some((t) => t.name === name);
+}
+
 export function buildTools(account: Account): Anthropic.Tool[] {
   return [
     ...allowedQueries(account).map((q) => ({ name: q.name, description: q.description, input_schema: q.inputSchema as Anthropic.Tool.InputSchema })),

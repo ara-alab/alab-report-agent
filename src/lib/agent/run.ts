@@ -6,9 +6,11 @@ import type { Account } from "@/lib/accounts";
 import { getAnthropic, withPremiumModel } from "@/lib/llm/client";
 import { aiRequestOptions } from "@/lib/llm/request-context";
 import { consumeAiStream } from "@/lib/llm/stream";
-import type { DraftContext } from "@/lib/drafting/tools";
+import { DraftError } from "@/lib/drafting/draft";
+import { isDraftingTool, restoreDraft, type DraftContext } from "@/lib/drafting/tools";
 import { systemPrompt } from "./prompt";
-import { buildTools, executeTool } from "./tools";
+import type { AgentOptions, ChatTurn } from "./request";
+import { buildTools, executeTool, isReusableQuery } from "./tools";
 
 // 모델 호출 상한 — 마지막 호출은 tool 없이 답변만 강제
 const MAX_STEPS = 10;
@@ -33,24 +35,81 @@ function withCacheTail(messages: Anthropic.MessageParam[]): Anthropic.MessagePar
   return [...messages.slice(0, -1), { ...tail, content: [...blocks.slice(0, -1), last] }];
 }
 
-export type ChatTurn = { role: "user" | "assistant"; content: string };
-
 // 모델 스트림 생성 — 기본은 API 호출, 개발 검증에서 재생 스트림으로 교체
 export type OpenStream = (params: Anthropic.MessageStreamParams) => MessageStream;
 const openApiStream: OpenStream = (params) => getAnthropic().messages.stream(params, aiRequestOptions());
 
-export async function runAgent(route: string, account: Account, turns: ChatTurn[], line: (value: unknown) => void, openStream: OpenStream = openApiStream) {
+// 작성 모드 지시 — tool 정의·시스템 프롬프트는 모드와 무관하게 공통, 지시는 마지막 사용자 발화 끝에만 추가
+function modeNote(opts: AgentOptions): string | null {
+  if (opts.mode === "ask") return "[질문 모드] 이번 요청은 대화 답변 요청입니다. 보고서 초안을 작성·저장하지 않고 조회 결과로 답합니다.";
+  if (opts.mode !== "draft") return null;
+  const fixed = opts.template ? ` 서식은 ${opts.template.name}(${opts.template.id})로 지정되어 있으며 다른 서식으로 바꾸지 않습니다.` : "";
+  return `[작성 모드] 이번 요청은 보고서 초안 작성 요청입니다. 필요한 조회를 마친 뒤 draft_report 로 초안을 작성합니다.${fixed}`;
+}
+// 작성 모드 재지시 — 이번 실행에서 초안 작성·저장 없이 끝나려 할 때 1회
+const DRAFT_NUDGE = "작성 모드 요청인데 초안이 아직 작성되지 않았습니다. 조회 결과로 draft_report 를 호출해 초안을 작성하세요.";
+const PICK_TEMPLATE = "서식을 선택해 주세요.";
+
+// 이전 턴 복원 — assistant 턴의 조회를 다시 실행해 캐시에 넣고 tool 호출·결과 블록으로 재구성, 실패 조회는 제외하고 기록
+// 초안은 가장 최근 턴의 기안 입력 하나만 그때까지 복원한 조회로 다시 검증해 기안 문맥에 복원
+async function restoreHistory(route: string, turns: ChatTurn[], account: Account, ctx: DraftContext): Promise<Anthropic.MessageParam[]> {
+  const messages: Anthropic.MessageParam[] = [];
+  let draftTurn = -1;
+  turns.forEach((turn, t) => {
+    if (turn.draft) draftTurn = t;
+  });
+  for (const [t, turn] of turns.entries()) {
+    const uses: Anthropic.ToolUseBlockParam[] = [];
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const [n, q] of (turn.queries ?? []).entries()) {
+      const outcome = isReusableQuery(q.name, account) ? await executeTool(q.name, q.input, account, ctx) : null;
+      if (!outcome || outcome.isError || !outcome.queryId) {
+        console.log(JSON.stringify({ type: "agent_history_drop", route, turn: t, name: q.name, error: outcome?.content.slice(0, 500) ?? "재실행할 수 없는 도구" }));
+        continue;
+      }
+      const id = `toolu_hist_${t}_${n}`;
+      uses.push({ type: "tool_use", id, name: q.name, input: q.input });
+      results.push({ type: "tool_result", tool_use_id: id, content: outcome.content });
+    }
+    if (t === draftTurn && turn.draft) {
+      try {
+        const content = await restoreDraft(turn.draft.input, turn.draft.saved, turns[t - 1]?.content, account, ctx);
+        const id = `toolu_hist_${t}_draft`;
+        uses.push({ type: "tool_use", id, name: "draft_report", input: turn.draft.input });
+        results.push({ type: "tool_result", tool_use_id: id, content });
+      } catch (e) {
+        if (!(e instanceof DraftError)) throw e;
+        console.log(JSON.stringify({ type: "agent_history_drop", route, turn: t, name: "draft_report", error: e.message.slice(0, 500) }));
+      }
+    }
+    if (uses.length) messages.push({ role: "assistant", content: uses }, { role: "user", content: results });
+    messages.push({ role: turn.role, content: turn.content });
+  }
+  return messages;
+}
+
+type RunOptions = AgentOptions & { openStream?: OpenStream };
+
+export async function runAgent(route: string, account: Account, turns: ChatTurn[], line: (value: unknown) => void, opts: RunOptions = {}) {
+  const openStream = opts.openStream ?? openApiStream;
   // 시스템 프롬프트 캐시 — tool 정의와 시스템 프롬프트 접두를 요청 내 단계 간 재사용
   const system: Anthropic.TextBlockParam[] = [{ type: "text", text: await systemPrompt(account), cache_control: { type: "ephemeral" } }];
   const tools = buildTools(account);
-  const messages: Anthropic.MessageParam[] = turns.map((t) => ({ role: t.role, content: t.content }));
+  // 기안 문맥 — 조회 결과 캐시는 이전 턴 조회 재실행분과 이번 실행분, 작성 모드·고정 서식
+  const ctx: DraftContext = { cache: new Map(), requestText: turns[turns.length - 1]?.content, mode: opts.mode, fixedTemplate: opts.template?.id };
+  const messages = await restoreHistory(route, turns, account, ctx);
+  // 복원 초안·저장 상태 — 이번 실행의 새 초안·저장 여부 판정 기준
+  const restored = { draft: ctx.draft, saved: ctx.saved };
+  const note = modeNote(opts);
+  if (note) appendNote(messages, note);
   const sources = new Set<string>();
+  // 이번 실행의 재실행 가능 조회 — 다음 요청의 assistant 턴 queries 로 되돌려 받는 목록
+  const reusable = new Map<string, { name: string; input: unknown }>();
   const usage = { input_tokens: 0, output_tokens: 0 };
   let wrote = false;
+  let nudged = false;
   let last: Anthropic.Message | null = null;
   let calls = 0;   // 이번 실행의 모델 호출 수 — 이전 대화 턴 제외
-  // 기안 문맥 — 조회 결과 캐시는 이번 실행 한정, 이전 턴 조회는 다시 실행해야 참조 가능
-  const ctx: DraftContext = { cache: new Map(), requestText: turns[turns.length - 1]?.content };
 
   for (let step = 1; step <= MAX_STEPS; step++) {
     const final = step === MAX_STEPS;
@@ -85,7 +144,8 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
       const size = b.type === "text" ? b.text.length : b.type === "tool_use" ? JSON.stringify(b.input).length : b.type === "thinking" ? b.thinking.length : 0;
       blocks[b.type] = (blocks[b.type] ?? 0) + size;
     }
-    console.log(JSON.stringify({ type: "agent_step", route, step, stopReason: message.stop_reason, outputTokens: message.usage.output_tokens, blocks }));
+    const toolNames = message.content.flatMap((b) => (b.type === "tool_use" ? [b.name] : []));
+    console.log(JSON.stringify({ type: "agent_step", route, step, stopReason: message.stop_reason, outputTokens: message.usage.output_tokens, blocks, tools: toolNames }));
     usage.input_tokens += message.usage.input_tokens;
     usage.output_tokens += message.usage.output_tokens;
     if (message.stop_reason === "max_tokens") {
@@ -101,15 +161,27 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
       }
     }
     messages.push({ role: "assistant", content: message.content });
-    if (message.stop_reason !== "tool_use") break;
+    if (message.stop_reason !== "tool_use") {
+      // 작성 모드 종료 점검 — 산출물 없이 끝나면 1회 재지시, 마지막 호출에선 생략
+      const missing = opts.mode === "draft" && ctx.draft === restored.draft && ctx.saved === restored.saved;
+      if (!missing || nudged || final) break;
+      nudged = true;
+      line({ type: "retry", reason: "draft_missing" });
+      messages.push({ role: "user", content: DRAFT_NUDGE });
+      continue;
+    }
 
+    // 조회 계획 — 이번 단계의 기안 외 tool 호출을 실행 전에 일괄 통지
+    const planned = message.content.flatMap((b) => (b.type === "tool_use" && !isDraftingTool(b.name) ? [{ id: b.id, name: b.name, input: b.input }] : []));
+    if (planned.length) line({ type: "plan", step, calls: planned });
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const block of message.content) {
       if (block.type !== "tool_use") continue;
       line({ type: "tool_call", id: block.id, name: block.name, input: block.input });
-      const before = { draft: ctx.draft, saved: ctx.saved };
+      const before = { draft: ctx.draft, saved: ctx.saved, proposed: ctx.proposed };
       const outcome = await executeTool(block.name, block.input, account, ctx);
       if (outcome.queryId) sources.add(outcome.queryId);
+      if (outcome.queryId && !outcome.isError && isReusableQuery(block.name, account)) reusable.set(outcome.queryId, { name: block.name, input: block.input });
       line({
         type: "tool_result",
         id: block.id,
@@ -121,14 +193,23 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
         truncated: outcome.truncated,
         elapsedMs: outcome.elapsedMs,
       });
-      if (ctx.draft && ctx.draft !== before.draft) line({ type: "draft", toolId: block.id, ...ctx.draft });
+      if (ctx.draft && ctx.draft !== before.draft) line({ type: "draft", toolId: block.id, ...ctx.draft, input: ctx.lastInput });
       if (ctx.saved && ctx.saved !== before.saved) line({ type: "saved", toolId: block.id, ...ctx.saved });
+      if (ctx.proposed && ctx.proposed !== before.proposed) line({ type: "templates", toolId: block.id, candidates: ctx.proposed });
       results.push({ type: "tool_result", tool_use_id: block.id, content: outcome.content, is_error: outcome.isError });
+    }
+    // 서식 제안 완료 — 사용자 선택을 기다리도록 이번 실행 종료
+    if (ctx.proposed) {
+      if (!wrote) {
+        line({ type: "delta", text: PICK_TEMPLATE });
+        wrote = true;
+      }
+      break;
     }
     messages.push({ role: "user", content: results });
   }
 
   // 본문 없이 종료 — 화면에 빈 말풍선 대신 오류 안내
   if (!wrote) line({ type: "error", error: "답변을 작성하지 못했습니다. 요청 범위를 좁혀 다시 시도해 주세요.", code: "empty_answer" });
-  line({ type: "done", model: last?.model, stop_reason: last?.stop_reason, steps: calls, sources: [...sources], usage });
+  line({ type: "done", model: last?.model, stop_reason: last?.stop_reason, steps: calls, sources: [...sources], queries: [...reusable.values()], usage });
 }

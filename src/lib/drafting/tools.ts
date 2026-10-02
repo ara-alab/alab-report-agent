@@ -4,15 +4,26 @@ import type { Account } from "@/lib/accounts";
 import { ReportError, listReports, saveReport } from "@/lib/reports";
 import { DraftError, draftReport, templateCatalog, type Draft } from "./draft";
 import type { RunCache } from "./refs";
+import { getTemplate } from "./templates";
 
-// 실행 문맥 — 조회 결과 캐시, 이번 실행의 마지막 기안 입력(거부 포함)·초안·저장 결과, 요청 원문
+export type TemplateCandidate = { id: string; name: string; reason: string };
+
+// 실행 문맥 — 조회 결과 캐시, 마지막 기안 입력(거부 포함)·초안(이전 턴 복원 포함)과 그 요청 원문·저장 결과·서식 제안, 이번 요청 원문과 작성 모드·고정 서식
 export type DraftContext = {
   cache: RunCache;
   requestText?: string;
+  mode?: "draft" | "ask";
+  fixedTemplate?: string;
   lastInput?: Record<string, unknown>;
   draft?: Draft;
+  draftRequest?: string;
   saved?: { id: number; docNo: string };
+  proposed?: TemplateCandidate[];
 };
+
+// 서식 제안 후보 수 상한
+const MAX_CANDIDATES = 3;
+const REASON_CHARS = 200;
 
 export const DRAFTING_TOOLS = [
   {
@@ -25,7 +36,7 @@ export const DRAFTING_TOOLS = [
     description: [
       "서식에 맞춰 보고서 초안을 작성해 화면 지면에 표시합니다. 수치는 직접 쓰지 않고 이번 요청에서 실행한 조회 결과를 참조합니다.",
       "참조 형식: \"조회ID:경로\". 조회ID는 도구 결과의 queryId, 경로는 결과 JSON 안의 위치입니다. 점으로 필드를 잇고, [n] 은 배열 위치, [필드=값] 은 조건에 맞는 원소 하나(값은 따옴표 없이), 배열 뒤 length 는 원소 수입니다. 예: analyze_kpi#ab12:total.current.value, check_limits#cd34:rows[entity=X].violations[item=Y].violationDays.length",
-      "키 종류별 입력: meta·text 는 문자열이며 안의 수치는 [[참조]] 또는 [[참조|소수자릿수]] 로 적습니다. 참조 없는 숫자는 날짜(M월 D일·MM-DD 등)·주차·분기·시각·차수·영문 코드·목록 번호 외에는 오류이며, 한계값·건수·일수·최대/최소값처럼 조회 결과에 있는 값도 예외 없이 참조로 적습니다.",
+      "키 종류별 입력: meta·text 는 문자열이며 안의 수치는 [[참조]] 또는 [[참조|소수자릿수]] 로 적습니다. 참조 없는 숫자는 날짜(M월 D일·MM-DD 등)·주차·분기·시각·차수·영문 코드·목록 번호 외에는 오류이며, 한계값·건수·일수·최대/최소값처럼 조회 결과에 있는 값도 예외 없이 참조로 적습니다. 계산식은 조회 결과의 계산식 문자열(formula)을 그대로 옮기거나 [[조회ID:경로]] 로 참조합니다.",
       "value 는 {ref, digits?, unit?}. stats 는 [{label, ref 또는 text, unit?, digits?, tone?(good|bad|warn)}].",
       "table 은 {columns:[{label, path?, digits?, align?(l|c|n)}], from?: \"조회ID:배열경로\", rows?: [[칸]], sum?: [칸]}. from 을 쓰면 배열 원소마다 열의 path·digits 로 칸을 만들고, rows 의 칸은 문자열 또는 {ref, digits?} 이며 칸의 digits 만 적용됩니다. 둘을 함께 쓰면 from 행 뒤에 rows 행이 붙습니다. 조회 결과 배열을 그대로 옮기는 표는 from 을 쓰고, rows 는 여러 조회 값을 한 표에 섞거나 일부 행만 고를 때만 씁니다.",
       "list 는 [{text, when?, lead?}]. 문서 제목은 title, 대상 기간은 period 로 주고, 문서번호·작성일·기안자·결재란은 코드가 채웁니다. 글자 수 상한은 recommend_templates 결과의 limits 를 따릅니다.",
@@ -57,6 +68,20 @@ export const DRAFTING_TOOLS = [
     description: "현재 계정이 볼 수 있는 저장된 보고서 목록(문서번호·서식·제목·기간·작성자·작성일)을 최신순으로 반환합니다.",
     input_schema: { type: "object", properties: { limit: { type: "integer", description: "최대 건수, 기본 20" } } },
   },
+  {
+    name: "propose_templates",
+    description: `요청에 맞는 서식 후보 1~${MAX_CANDIDATES}개를 사용자에게 선택 카드로 제시하고 이번 응답을 마칩니다. 용도가 맞는 서식이 여럿이라 하나로 정하기 어렵거나 사용자가 서식 선택을 원할 때 조회 전에 호출합니다. id 는 recommend_templates 결과의 서식 id, reason 은 이 요청에 맞는 이유 한 문장입니다.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        candidates: {
+          type: "array",
+          items: { type: "object", properties: { id: { type: "string" }, reason: { type: "string" } }, required: ["id", "reason"] },
+        },
+      },
+      required: ["candidates"],
+    },
+  },
 ] as const;
 
 const NAMES = new Set<string>(DRAFTING_TOOLS.map((t) => t.name));
@@ -75,12 +100,52 @@ function reviseInput(base: Record<string, unknown>, patch: Record<string, unknow
   return { ...base, ...rest, fills: isObj(patch.fills) ? { ...baseFills, ...patch.fills } : baseFills };
 }
 
+// 서식 제안 — 후보 수·중복·서식 존재·이유 길이 검증
+async function proposeTemplates(input: Record<string, unknown>, ctx: DraftContext): Promise<DraftingOutcome> {
+  const list = input.candidates;
+  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_CANDIDATES) return fail(`candidates 는 1~${MAX_CANDIDATES}개 배열이어야 합니다.`);
+  const out: TemplateCandidate[] = [];
+  for (const c of list) {
+    const t = isObj(c) && typeof c.id === "string" ? await getTemplate(c.id) : null;
+    if (!t) return fail(`알 수 없는 서식입니다: ${isObj(c) ? String(c.id) : String(c)} — recommend_templates 결과의 id 를 쓰세요`);
+    if (out.some((o) => o.id === t.id)) return fail(`서식이 중복되었습니다: ${t.id}`);
+    const reason = isObj(c) && typeof c.reason === "string" ? c.reason.trim() : "";
+    if (!reason || reason.length > REASON_CHARS) return fail(`${t.id}: reason 은 ${REASON_CHARS}자 이하 한 문장이어야 합니다.`);
+    out.push({ id: t.id, name: t.name, reason });
+  }
+  ctx.proposed = out;
+  return json({ ok: true, candidates: out.map((c) => c.id) });
+}
+
+// 작성 모드 제약 — 질문 모드는 기안·저장·제안 거부, 서식 고정 시 제안 거부
+function modeBlock(name: string, ctx: DraftContext): string | null {
+  if (ctx.mode === "ask" && (name === "draft_report" || name === "save_report" || name === "propose_templates")) {
+    return "질문 모드 요청이라 보고서 초안을 작성·저장·제안하지 않습니다. 조회 결과로 대화 답변을 작성하세요.";
+  }
+  if (name === "propose_templates" && ctx.fixedTemplate) return `이번 요청은 서식이 ${ctx.fixedTemplate} 로 지정되어 있어 서식을 제안하지 않습니다.`;
+  return null;
+}
+
+const draftOutcome = (d: Draft) => json({ ok: true, template: d.template.id, title: d.title, filledKeys: Object.keys(d.fills), numbers: d.numbers.length, warnings: d.warnings });
+
+// 이전 턴 초안 복원 — 복원한 조회 캐시로 기안 입력을 다시 검증, LLM 미호출·작성 모드 제약 미적용, 검증 실패 시 DraftError
+export async function restoreDraft(input: Record<string, unknown>, saved: DraftContext["saved"], requestText: string | undefined, account: Account, ctx: DraftContext): Promise<string> {
+  const d = await draftReport(input, account, ctx.cache);
+  Object.assign(ctx, { lastInput: input, draft: d, draftRequest: requestText, saved });
+  return draftOutcome(d).content;
+}
+
 export async function runDraftingTool(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<DraftingOutcome> {
+  const blocked = modeBlock(name, ctx);
+  if (blocked) return fail(blocked);
   try {
     if (name === "recommend_templates") return json(await templateCatalog(account));
+    if (name === "propose_templates") return await proposeTemplates(input, ctx);
     if (name === "draft_report") {
       if (input.revise === true && !ctx.lastInput) return fail("고칠 직전 draft_report 입력이 없습니다. revise 없이 전체 입력으로 호출하세요.");
       const merged = input.revise === true ? reviseInput(ctx.lastInput!, input) : input;
+      // 서식 고정 — 다른 서식 초안은 검증 전에 거부, 직전 입력으로 남기지 않음
+      if (ctx.fixedTemplate && merged.template !== ctx.fixedTemplate) return fail(`이번 요청의 서식은 ${ctx.fixedTemplate} 로 지정되어 있습니다. template 을 ${ctx.fixedTemplate} 로 바꿔 다시 호출하세요.`);
       ctx.lastInput = merged;
       let d: Draft;
       try {
@@ -90,14 +155,15 @@ export async function runDraftingTool(name: string, input: Record<string, unknow
         throw e;
       }
       ctx.draft = d;
+      ctx.draftRequest = ctx.requestText;
       ctx.saved = undefined;
-      return json({ ok: true, template: d.template.id, title: d.title, filledKeys: Object.keys(d.fills), numbers: d.numbers.length, warnings: d.warnings });
+      return draftOutcome(d);
     }
     if (name === "save_report") {
       const d = ctx.draft;
       if (!d) return fail("이번 요청에서 작성한 초안이 없습니다. draft_report 로 먼저 초안을 작성하세요.");
       const r = await saveReport(
-        { id: ctx.saved?.id, templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: ctx.requestText, fills: d.fills, numbers: d.numbers },
+        { id: ctx.saved?.id, templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: ctx.draftRequest ?? ctx.requestText, fills: d.fills, numbers: d.numbers },
         account,
       );
       ctx.saved = { id: Number(r.id), docNo: String(r.docNo) };

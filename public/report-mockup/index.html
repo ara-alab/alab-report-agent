@@ -1542,7 +1542,8 @@
         <!-- 문서 — 출력, 동작은 미구현이라 준비중 표시 -->
         <div class="rgroup">
           <div class="rgroup-tools">
-            <button class="tool-lg" type="button" data-needdoc data-soon><span class="g">▣</span><span class="t">저장<span class="soon">준비중</span></span></button>
+            <!-- 개발용 구현 — Agent 초안 명시 저장, UI 실구현 단계에서 교체 -->
+            <button class="tool-lg" type="button" id="devSaveBtn" data-needdoc><span class="g">▣</span><span class="t">저장</span></button>
             <button class="tool-lg" type="button" data-needdoc data-soon><span class="g">⭳</span><span class="t">내보내기<span class="soon">준비중</span></span></button>
           </div>
           <div class="rgroup-label">문서</div>
@@ -1645,6 +1646,10 @@
               <button class="chat-chip" type="button" data-soon>데이터 요약</button>
               <button class="chat-chip" type="button" data-soon>템플릿 추천</button>
               <button class="chat-chip" type="button" data-soon>문단 다시 쓰기</button>
+            </div>
+            <!-- 개발용 구현 — 작성 모드 지정, UI 실구현 단계에서 교체 -->
+            <div id="devMode" style="font-size:12px">
+              모드 <select id="devModeSel"><option value="">자동</option><option value="draft">작성</option><option value="ask">질문</option></select>
             </div>
             <div class="chat-box">
               <textarea id="chatInput" rows="2" placeholder="보고서 작성 지시를 입력하세요"></textarea>
@@ -2470,6 +2475,8 @@
     // 초안 내용 높이 변화(글꼴·표 배치 확정) 시 지면 높이 재계산
     if (window.ResizeObserver && docPage) new ResizeObserver(function () { if (pageBox && pageBox.classList.contains('draft')) applyZoom(); }).observe(docPage);
     function setDraftPage(on) {
+      // 개발용 구현 — Agent 초안이 아닌 지면으로 바뀌면 명시 저장 대상 해제
+      if (!on) { lastDraft = null; lastDraftRef = null; }
       if (!pageBox) return;
       pageBox.classList.toggle('draft', on);
       if (!on) pageBox.style.height = '';
@@ -2792,7 +2799,7 @@
         var card = document.createElement('button');
         card.className = 'chat-opt';
         card.type = 'button';
-        card.innerHTML = '<span class="sys">' + it.sys + '</span>' +
+        card.innerHTML = (it.sys ? '<span class="sys">' + it.sys + '</span>' : '') +
           '<span class="nm">' + it.nm + '</span>' +
           '<span class="sub">' + it.sub + '</span>';
         card.addEventListener('click', function () {
@@ -2828,8 +2835,29 @@
       query_equipment_status: '설비 상태 집계', query_material_flow: '자재 수불 집계',
       analyze_kpi: 'KPI 계산', check_limits: '규격 이탈 판정', resolve_week: '주차 기간 확인',
       list_datasets: '데이터 목록 확인', describe_table: '테이블 구조 확인', run_sql: 'SQL 조회',
-      recommend_templates: '서식 확인', draft_report: '보고서 초안 작성', save_report: '보고서 저장', list_reports: '보고서 목록 확인'
+      recommend_templates: '서식 확인', draft_report: '보고서 초안 작성', save_report: '보고서 저장', list_reports: '보고서 목록 확인',
+      propose_templates: '서식 후보 제안'
     };
+    // 개발용 구현 — 이전 턴 조회 이력 상한(서버 검증과 같은 값), 초과분은 오래된 턴부터 제외
+    var AGENT_MAX_QUERIES = 60;
+    var AGENT_MAX_TURN_QUERIES = 30;
+    var AGENT_MAX_QUERY_INPUT = 2000;
+    function trimQueries(turns) {
+      var total = 0;
+      for (var i = turns.length - 1; i >= 0; i--) {
+        var t = turns[i];
+        if (!t.queries) continue;
+        if (total + t.queries.length > AGENT_MAX_QUERIES) { turns[i] = { role: t.role, content: t.content }; continue; }
+        total += t.queries.length;
+      }
+      return turns;
+    }
+    // 개발용 구현 — 모드 스위치 값, 인자로 넘긴 지정이 우선
+    function agentOptions(opts) {
+      if (opts) return opts;
+      var sel = document.getElementById('devModeSel');
+      return sel && sel.value ? { mode: sel.value } : {};
+    }
     // 조회 진행 한 줄 — 도구·핵심 입력(기간·대상), 결과 도착 시 행 수 또는 오류 덧붙임
     function stepText(ev) {
       var inp = ev.input || {};
@@ -2874,6 +2902,9 @@
     }
     // 기안 초안 — 서버 렌더 HTML(서버에서 이스케이프 완료)을 지면에 표시, 저장 연동 전 임시 표시
     var lastDraft = null;
+    // 개발용 구현 — 최근 초안의 기안 입력·저장 결과(대화 이력 draft 로 전송)와 요청 원문(명시 저장용)
+    var lastDraftRef = null;
+    var lastDraftRequest = '';
     function showDraft(d, steps) {
       lastDraft = d;
       if (!docOn) showDoc(true);
@@ -2894,8 +2925,8 @@
       });
     }
 
-    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송
-    function sendAgentChat(textArg) {
+    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송, opts 는 작성 모드·서식 지정(개발용)
+    function sendAgentChat(textArg, opts) {
       var fromInput = typeof textArg !== 'string';
       var text = fromInput ? (chatInputEl ? chatInputEl.value.trim() : '') : textArg.trim();
       if (!text || agentAbort || !window.AlabApi || askTooLong(text)) return;
@@ -2916,11 +2947,16 @@
       // 오래된 발화부터 덜어 한도 안으로, 첫 발화는 사용자 발화로 맞춤
       var turns = agentHistory.concat([{ role: 'user', content: text }]);
       while (turns.length > AGENT_MAX_TURNS || turns[0].role !== 'user') turns.shift();
+      trimQueries(turns);
+      var turnQueries = [];   // 개발용 구현 — 이번 턴 재사용 조회, 다음 요청의 assistant 이력에 보관
+      var turnDraft = null;   // 개발용 구현 — 이번 턴 초안 기안 입력, 다음 요청의 assistant 이력에 보관
       var answer = '';   // 마지막 도구 호출 이후 본문 — 최종 답변 후보
       var failed = null;
       var ctrl = agentAbort = new AbortController();
       var body = { messages: turns };
       if (demoUser.id) body.account = demoUser.id;
+      var mo = agentOptions(opts);
+      Object.keys(mo).forEach(function (k) { body[k] = mo[k]; });
       AlabApi.stream('agent', body, function (ev) {
         if (ev.type === 'delta') {
           answer += ev.text;
@@ -2948,7 +2984,7 @@
             if (!ev.ok) el.classList.add('err');
           }
         } else if (ev.type === 'retry') {
-          // 출력 한도로 잘린 응답 — 그 전 본문은 중간 안내로 옮기고 재작성 표시
+          // 출력 한도 잘림·작성 모드 초안 재지시 — 그 전 본문은 중간 안내로 옮기고 사유별 재작성 표시
           if (answer.trim()) {
             var cut = document.createElement('div');
             cut.className = 'chat-step chat-note';
@@ -2959,21 +2995,47 @@
           bubble.textContent = '작성 중…';
           var rt = document.createElement('div');
           rt.className = 'chat-step';
-          rt.textContent = '· 응답이 길어 다시 작성 중';
+          rt.textContent = ev.reason === 'draft_missing' ? '· 초안 작성을 다시 요청하는 중' : '· 응답이 길어 다시 작성 중';
           steps.appendChild(rt);
+        } else if (ev.type === 'plan') {
+          // 개발용 구현 — 조회 계획 한 줄 표시
+          var pl = document.createElement('div');
+          pl.className = 'chat-step';
+          pl.textContent = '· 조회 계획 ' + ev.step + '단계: ' + ev.calls.map(function (c) { return TOOL_LABELS[c.name] || c.name; }).join(', ');
+          steps.appendChild(pl);
+        } else if (ev.type === 'templates') {
+          // 개발용 구현 — 서식 후보 카드, 고르면 그 서식으로 작성 요청
+          pushChatOpts('서식 후보', ev.candidates.map(function (c) {
+            return { id: c.id, name: c.name, sys: '', nm: escHtml(c.name), sub: escHtml(c.reason) };
+          }), function (it, done) {
+            if (agentAbort) return;
+            done();
+            sendAgentChat(it.name + ' 서식으로 작성해 주세요', { mode: 'draft', template: it.id });
+          });
         } else if (ev.type === 'draft') {
           showDraft(ev, steps);
+          turnDraft = lastDraftRef = { input: ev.input };
+          lastDraftRequest = text;
         } else if (ev.type === 'saved') {
-          showToast('보고서를 저장했습니다 · ' + ev.docNo);
+          if (lastDraftRef) lastDraftRef.saved = { id: ev.id, docNo: ev.docNo };
+          showSavedPage(ev.id, ev.docNo);
         } else if (ev.type === 'done') {
           if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
+          turnQueries = (ev.queries || []).filter(function (q) { return JSON.stringify(q.input).length <= AGENT_MAX_QUERY_INPUT; });
         } else if (ev.type === 'error') failed = ev.error;
         chatLogEl.scrollTop = chatLogEl.scrollHeight;
       }, ctrl.signal).then(function () {
         if (failed || !answer) throw new Error(failed || '응답이 비어 있습니다.');
         // 긴 답변은 이력에 앞부분만 보관 — 서버 발화 길이 한도 초과로 다음 요청이 거부되지 않게
         var kept = answer.length > AGENT_MAX_CHARS ? answer.slice(0, AGENT_MAX_CHARS - 1) + '…' : answer;
-        agentHistory = turns.concat([{ role: 'assistant', content: kept }]);
+        var reply = { role: 'assistant', content: kept };
+        if (turnQueries.length) reply.queries = turnQueries.slice(0, AGENT_MAX_TURN_QUERIES);
+        // 초안은 최근 것 하나만 이력에 유지 — 서버는 가장 최근 초안만 복원
+        if (turnDraft) {
+          turns.forEach(function (t) { delete t.draft; });
+          reply.draft = turnDraft;
+        }
+        agentHistory = turns.concat([reply]);
       }).catch(function (err) {
         if (ctrl.signal.aborted) {
           bubble.innerHTML = (answer ? renderMd(answer) + '<div class="md-gap"></div>' : '') + '<div>중단됨</div>';
@@ -3004,6 +3066,32 @@
       });
       AlabAccount.load().then(openSavedReport, function (err) { showToast('계정 목록을 불러오지 못했습니다: ' + err.message); });
     }
+    // 개발용 구현 — 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
+    function showSavedPage(id, docNo) {
+      var acct = window.AlabAccount && AlabAccount.current();
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
+        if (j.html && docPage) docPage.innerHTML = j.html;
+        applyZoom();
+        showToast('보고서를 저장했습니다 · ' + docNo);
+      }).catch(function (err) { showToast('저장했으나 지면을 갱신하지 못했습니다: ' + err.message); });
+    }
+    // 개발용 구현 — 리본 저장 버튼으로 최근 Agent 초안 명시 저장, 저장 결과는 대화 이력 초안에도 반영
+    var devSaveBtn = document.getElementById('devSaveBtn');
+    if (devSaveBtn) devSaveBtn.addEventListener('click', function () {
+      if (devSaveBtn.disabled) return;   // 개발용 구현 — 저장 응답 전 재클릭으로 인한 중복 발번 방지
+      if (!lastDraft || !lastDraftRef) { showToast('저장할 Agent 초안이 없습니다'); return; }
+      var d = lastDraft;
+      var ref = lastDraftRef;
+      var body = { templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: lastDraftRequest, fills: d.fills, numbers: d.numbers };
+      if (demoUser.id) body.account = demoUser.id;
+      if (ref.saved) body.id = ref.saved.id;
+      devSaveBtn.disabled = true;
+      AlabApi.postJson('reports', body).then(function (j) {
+        ref.saved = { id: j.report.id, docNo: j.report.docNo };
+        showSavedPage(j.report.id, j.report.docNo);
+      }).catch(function (err) { showToast('저장하지 못했습니다: ' + err.message); })
+        .then(function () { devSaveBtn.disabled = false; });
+    });
     // 임시 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 목록 화면 연동 전 확인용
     function openSavedReport() {
       var q = new URLSearchParams(location.search);
@@ -3016,6 +3104,8 @@
         if (!docOn) showDoc(true);
         docPage.innerHTML = j.html;
         setDraftPage(true);
+        lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 명시 저장 대상 아님
+        lastDraftRef = null;
         applyZoom();
         if (docnameEl) docnameEl.textContent = j.report.title;
         setDocPages([j.report.title]);
