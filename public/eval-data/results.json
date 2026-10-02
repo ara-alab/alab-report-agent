@@ -380,5 +380,365 @@
       ]
     }
   ],
-  "updatedAt": "2026-10-02T08:02:47.643Z"
+  "updatedAt": "2026-10-02T08:27:06.408Z",
+  "metrics": {
+    "at": "2026-10-02T08:27:06.408Z",
+    "commit": "4788da5",
+    "dirty": false,
+    "note": "첫 측정",
+    "partial": false,
+    "summary": [
+      {
+        "id": "query_success",
+        "label": "데이터 조회 성공률",
+        "target": 0.95,
+        "value": 1,
+        "ok": 41,
+        "total": 41,
+        "pass": true
+      },
+      {
+        "id": "fill_rate",
+        "label": "필수항목 자동작성률",
+        "target": 0.9,
+        "value": 1,
+        "ok": 38,
+        "total": 38,
+        "pass": true
+      },
+      {
+        "id": "number_match",
+        "label": "원본 데이터-보고서 수치 일치율",
+        "target": 0.95,
+        "value": 1,
+        "ok": 284,
+        "total": 284,
+        "pass": true,
+        "unverified": 0
+      },
+      {
+        "id": "mapping",
+        "label": "Template Mapping 정확도",
+        "target": 0.9,
+        "value": 1,
+        "ok": 21,
+        "total": 21,
+        "pass": true
+      },
+      {
+        "id": "anomaly",
+        "label": "이상 판정 정확도",
+        "target": 1,
+        "value": 1,
+        "ok": 3,
+        "total": 3,
+        "pass": true,
+        "falsePositives": 0,
+        "maxFalsePositives": 0
+      }
+    ],
+    "requests": [
+      {
+        "id": "R1",
+        "kind": "시드 이상 사례 포함",
+        "request": "9월 둘째 주 주간 생산실적 보고서를 작성해 주세요.",
+        "account": "prod-kim",
+        "runId": "20261002T082425-969f4194",
+        "error": null,
+        "template": "weekly-summary",
+        "queries": {
+          "ok": 11,
+          "total": 11
+        },
+        "fill": {
+          "ok": 8,
+          "total": 8,
+          "missing": []
+        },
+        "mapping": {
+          "ok": 5,
+          "total": 5,
+          "units": [
+            {
+              "unit": "template",
+              "pass": true,
+              "reason": "weekly-summary"
+            },
+            {
+              "unit": "period_from",
+              "pass": true,
+              "reason": "2026-09-07"
+            },
+            {
+              "unit": "period_to",
+              "pass": true,
+              "reason": "2026-09-13"
+            },
+            {
+              "unit": "summary_stats",
+              "pass": true
+            },
+            {
+              "unit": "daily_table",
+              "pass": true
+            }
+          ]
+        },
+        "numbers": {
+          "reportId": 2,
+          "docNo": "RPT-WKL-20261002-02",
+          "total": 63,
+          "match": 63,
+          "mismatch": 0,
+          "missing": 0,
+          "noSource": 0,
+          "rate": 1,
+          "calls": 10
+        },
+        "at": "2026-10-02T08:25:00.373Z",
+        "commit": "4788da5",
+        "dirty": false,
+        "note": "첫 측정"
+      },
+      {
+        "id": "R2",
+        "kind": "일반",
+        "request": "8월 10일부터 21일까지 생산 실적을 라인별로 분석한 보고서를 작성해 주세요.",
+        "account": "prod-kim",
+        "runId": "20261002T082500-a5045b4d",
+        "error": null,
+        "template": "production-brief",
+        "queries": {
+          "ok": 11,
+          "total": 11
+        },
+        "fill": {
+          "ok": 10,
+          "total": 10,
+          "missing": []
+        },
+        "mapping": {
+          "ok": 5,
+          "total": 5,
+          "units": [
+            {
+              "unit": "template",
+              "pass": true,
+              "reason": "production-brief"
+            },
+            {
+              "unit": "period_from",
+              "pass": true,
+              "reason": "2026-08-10"
+            },
+            {
+              "unit": "period_to",
+              "pass": true,
+              "reason": "2026-08-21"
+            },
+            {
+              "unit": "kpi_stats",
+              "pass": true
+            },
+            {
+              "unit": "group_table",
+              "pass": true
+            }
+          ]
+        },
+        "numbers": {
+          "reportId": 3,
+          "docNo": "RPT-PRD-20261002-01",
+          "total": 46,
+          "match": 46,
+          "mismatch": 0,
+          "missing": 0,
+          "noSource": 0,
+          "rate": 1,
+          "calls": 10
+        },
+        "at": "2026-10-02T08:25:40.555Z",
+        "commit": "4788da5",
+        "dirty": false,
+        "note": "첫 측정"
+      },
+      {
+        "id": "R3",
+        "kind": "일반",
+        "request": "9월 14일부터 18일까지 설비 가동 현황 보고서를 작성해 주세요.",
+        "account": "qa-seo",
+        "runId": "20261002T082540-fef3f6bc",
+        "error": null,
+        "template": "equipment-brief",
+        "queries": {
+          "ok": 6,
+          "total": 6
+        },
+        "fill": {
+          "ok": 10,
+          "total": 10,
+          "missing": []
+        },
+        "mapping": {
+          "ok": 5,
+          "total": 5,
+          "units": [
+            {
+              "unit": "template",
+              "pass": true,
+              "reason": "equipment-brief"
+            },
+            {
+              "unit": "period_from",
+              "pass": true,
+              "reason": "2026-09-14"
+            },
+            {
+              "unit": "period_to",
+              "pass": true,
+              "reason": "2026-09-18"
+            },
+            {
+              "unit": "kpi_stats",
+              "pass": true
+            },
+            {
+              "unit": "group_table",
+              "pass": true
+            }
+          ]
+        },
+        "numbers": {
+          "reportId": 4,
+          "docNo": "RPT-EQP-20261002-01",
+          "total": 129,
+          "match": 129,
+          "mismatch": 0,
+          "missing": 0,
+          "noSource": 0,
+          "rate": 1,
+          "calls": 5
+        },
+        "at": "2026-10-02T08:26:11.767Z",
+        "commit": "4788da5",
+        "dirty": false,
+        "note": "첫 측정"
+      },
+      {
+        "id": "R4",
+        "kind": "시드 이상 사례 포함",
+        "request": "8월 넷째 주 설비 이상과 품질 영향 보고서를 작성해 주세요.",
+        "account": "qa-seo",
+        "runId": "20261002T082611-80caabae",
+        "error": null,
+        "template": "equipment-quality-impact",
+        "queries": {
+          "ok": 13,
+          "total": 13
+        },
+        "fill": {
+          "ok": 10,
+          "total": 10,
+          "missing": []
+        },
+        "mapping": {
+          "ok": 6,
+          "total": 6,
+          "units": [
+            {
+              "unit": "template",
+              "pass": true,
+              "reason": "equipment-quality-impact"
+            },
+            {
+              "unit": "period_from",
+              "pass": true,
+              "reason": "2026-08-24"
+            },
+            {
+              "unit": "period_to",
+              "pass": true,
+              "reason": "2026-08-30"
+            },
+            {
+              "unit": "kpi_stats",
+              "pass": true
+            },
+            {
+              "unit": "violation_table",
+              "pass": true
+            },
+            {
+              "unit": "impact_table",
+              "pass": true
+            }
+          ]
+        },
+        "numbers": {
+          "reportId": 5,
+          "docNo": "RPT-EQI-20261002-01",
+          "total": 46,
+          "match": 46,
+          "mismatch": 0,
+          "missing": 0,
+          "noSource": 0,
+          "rate": 1,
+          "calls": 10
+        },
+        "at": "2026-10-02T08:27:06.385Z",
+        "commit": "4788da5",
+        "dirty": false,
+        "note": "첫 측정"
+      }
+    ],
+    "anomaly": {
+      "cases": [
+        {
+          "id": "humidity-appearance",
+          "entity": "M-101",
+          "item": "HUM",
+          "expected": [
+            "2026-08-26",
+            "2026-08-27"
+          ],
+          "actual": [
+            "2026-08-26",
+            "2026-08-27"
+          ],
+          "pass": true
+        },
+        {
+          "id": "post-pressure-stop",
+          "entity": "F-101",
+          "item": "PRS",
+          "expected": [
+            "2026-09-09"
+          ],
+          "actual": [
+            "2026-09-09"
+          ],
+          "pass": true
+        },
+        {
+          "id": "vibration-spike",
+          "entity": "M-201",
+          "item": "VIB",
+          "expected": [
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24"
+          ],
+          "actual": [
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24"
+          ],
+          "pass": true
+        }
+      ],
+      "falsePositives": 0,
+      "extra": [],
+      "unexplained": 0
+    }
+  }
 }
