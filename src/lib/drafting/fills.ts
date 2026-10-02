@@ -1,10 +1,11 @@
 // 채움 값 구조 검증 — 외부 입력(JSON)을 키 종류별 Fill 로 변환, 실패 시 사유 반환
-import type { Align, Cell, Fill, Fills, Tone } from "./render";
+import type { Align, Cell, Fill, Fills, NumMark, Tone } from "./render";
 
 const MAX_TEXT = 4000;
 const MAX_ROWS = 200;
 const MAX_COLS = 20;
 const MAX_ITEMS = 40;
+const MAX_NUMS = 100;
 
 class FillError extends Error {}
 
@@ -48,13 +49,35 @@ function cell(v: unknown, what: string): Cell {
   return num(v, what);
 }
 
+// 서술 수치 위치 — 서술 범위 안의 겹치지 않는 구간, 수치 키 형식 제한
+function nums(v: unknown, text: string, what: string): { nums?: NumMark[] } {
+  if (v === undefined) return {};
+  let last = 0;
+  const out = arr(v, what, MAX_NUMS).map((x, i) => {
+    const w = `${what}[${i}]`;
+    if (!isObj(x)) throw new FillError(`${w}: 객체가 아닙니다`);
+    const { at, len } = x;
+    if (!Number.isInteger(at) || !Number.isInteger(len) || (at as number) < last || (len as number) < 1 || (at as number) + (len as number) > text.length)
+      throw new FillError(`${w}: 위치가 서술 범위를 벗어나거나 겹칩니다`);
+    last = (at as number) + (len as number);
+    const key = str(x.key, `${w}.key`, 120);
+    if (!/^[a-z][a-z0-9_]*[\w.[\]#]*$/.test(key)) throw new FillError(`${w}.key: 수치 키 형식이 아닙니다`);
+    return { at: at as number, len: len as number, key };
+  });
+  return out.length ? { nums: out } : {};
+}
+
 function fill(v: unknown, at: string): Fill {
   if (!isObj(v)) throw new FillError(`${at}: 객체가 아닙니다`);
   switch (v.kind) {
-    case "meta":
-      return { kind: "meta", text: str(v.text, `${at}.text`, 200) };
-    case "text":
-      return { kind: "text", text: str(v.text, `${at}.text`) };
+    case "meta": {
+      const text = str(v.text, `${at}.text`, 200);
+      return { kind: "meta", text, ...nums(v.nums, text, `${at}.nums`) };
+    }
+    case "text": {
+      const text = str(v.text, `${at}.text`);
+      return { kind: "text", text, ...nums(v.nums, text, `${at}.nums`) };
+    }
     case "value":
       return { kind: "value", value: num(v.value, `${at}.value`), digits: optDigits(v.digits, `${at}.digits`), unit: optStr(v.unit, `${at}.unit`) };
     case "stats":
@@ -97,7 +120,8 @@ function fill(v: unknown, at: string): Fill {
           const w = `${at}.items[${i}]`;
           if (!isObj(x)) throw new FillError(`${w}: 객체가 아닙니다`);
           if (x.lead !== undefined && typeof x.lead !== "boolean") throw new FillError(`${w}.lead: 참·거짓 값이 아닙니다`);
-          return { text: str(x.text, `${w}.text`, 1000), when: optStr(x.when, `${w}.when`), lead: x.lead as boolean | undefined };
+          const text = str(x.text, `${w}.text`, 1000);
+          return { text, when: optStr(x.when, `${w}.when`), lead: x.lead as boolean | undefined, ...nums(x.nums, text, `${w}.nums`) };
         }),
       };
     default:

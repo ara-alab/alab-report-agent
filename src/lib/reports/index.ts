@@ -186,6 +186,19 @@ export async function listReports(account: Account, { limit = 50 }: { limit?: nu
   return rows as unknown as ReportSummary[];
 }
 
+// 저장 수치 행 — DECIMAL 컬럼은 문자열로 수신, 출처 조회는 도구 이름·입력
+export type StoredNumber = {
+  key: string;
+  label: string | null;
+  value: number | string;
+  numerator: number | string | null;
+  denominator: number | string | null;
+  unit: string | null;
+  queryId: string | null;
+  path: string | null;
+  call: { name: string; input: unknown } | null;
+};
+
 // 단건 — 시스템 발급 키를 합친 전체 채움 값과 수치 목록
 export async function getReport(id: number, account: Account) {
   const v = visible(account);
@@ -207,7 +220,7 @@ export async function getReport(id: number, account: Account) {
     // 수정 가능 — 작성 계정 본인이고 기안 기록이 있는 보고서
     editable: Boolean(hasDraft) && meta.accountId === account.id,
     fills: { ...stored, ...systemFills({ docNo: String(row.docNo), date: String(issuedDate) }) },
-    numbers: numbers.map((n) => ({ ...n, call: typeof n.call === "string" ? JSON.parse(n.call) : n.call })),
+    numbers: numbers.map((n) => ({ ...n, call: typeof n.call === "string" ? JSON.parse(n.call) : n.call }) as StoredNumber),
   };
 }
 
