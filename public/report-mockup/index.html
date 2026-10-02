@@ -1464,23 +1464,45 @@
   .soon { font-family: var(--mono); font-size: 10.5px; color: var(--ink-muted); border: 1px solid var(--line-strong); border-radius: 8px; padding: 1px 4px; margin-left: 5px; }
   .btn-primary .soon { color: var(--on-accent); border-color: color-mix(in srgb, var(--on-accent) 45%, transparent); }
 
-  /* 시작 화면 — 문서 미생성 상태의 진입 카드, 1행 두 갈래 + 2행 대화 시작 */
+  /* 시작 화면 — 문서 미생성 상태의 진입 화면, 서비스 소개·사용 단계 안내 + 시작 방법 두 갈래 */
   .startpanel { flex: 0 0 auto; width: min(880px, 100%); margin: auto 0; display: flex; flex-direction: column; gap: 14px; }
-  /* 안내 문구는 캔버스 바탕 위 — 라이트 캔버스는 중간 회색이라 흰 글자로는 AA 미달, 테마별 캔버스 잉크 사용 */
-  .start-head { display: flex; flex-direction: column; gap: 5px; text-align: center; }
-  .start-head .t { font-size: 19px; font-weight: 650; color: var(--on-canvas); }
-  .start-head .s { font-size: 13.5px; color: var(--on-canvas); }
-  .start-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  /* 한글 문구는 어절 단위로 줄바꿈, 패널 폭 기준으로 단계 안내 배치 전환 */
+  .startpanel { container-type: inline-size; word-break: keep-all; }
+  /* 소개 패널 — 서비스 이름·소개·사용 단계를 카드와 같은 면에 올려 캔버스 바탕과 분리 */
+  .start-intro { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+  .start-head { display: flex; flex-direction: column; gap: 8px; padding: 26px 19px 22px; text-align: center; }
+  .start-brand { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; color: var(--accent-strong); }
+  .start-head .t { font-size: 15px; font-weight: 500; color: var(--ink); }
+  /* 사용 단계 안내 — 소개 패널 아랫단의 읽기 전용 띠, 단계 사이 화살표는 한 줄 배치에서만 */
+  .start-steps { list-style: none; margin: 0; padding: 15px 19px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 22px; border-top: 1px solid var(--line); }
+  .start-steps li { position: relative; display: flex; flex-direction: column; gap: 4px; }
+  .start-steps li:not(:last-child)::after { content: "→"; position: absolute; top: 0; right: -17px; font-family: var(--mono); font-size: 13px; line-height: 20px; color: var(--ink-faint); }
+  .start-steps .n { width: 20px; height: 20px; border: 1px solid var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent-strong); }
+  .start-steps .t { font-size: 13.5px; font-weight: 650; color: var(--ink); }
+  .start-steps .s { font-size: 12.5px; line-height: 1.5; color: var(--ink-muted); }
+  @container (max-width: 700px) {
+    .start-steps { grid-template-columns: repeat(2, 1fr); }
+    .start-steps li::after { display: none; }
+  }
+  .start-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .start-card { display: flex; flex-direction: column; gap: 8px; padding: 21px 19px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); text-align: left; cursor: pointer; }
   .start-row .start-card { min-height: 168px; }
   .start-card:hover { border-color: var(--accent); }
   .start-card .g { font-family: var(--mono); font-size: 25px; line-height: 1; color: var(--accent-strong); }
   .start-card .t { font-size: 15.5px; font-weight: 650; color: var(--ink); }
   .start-card .s { font-size: 13px; line-height: 1.5; color: var(--ink-muted); }
-  /* 대화 시작 카드 — 입력란이 진입 수단이라 카드 자체는 클릭 대상 아님 */
-  .start-chat { cursor: default; }
-  .start-chat:hover { border-color: var(--line); }
-  .start-chat .chat-box { margin-top: 4px; background: var(--surface-2); }
+
+  /* 보고서 탭 — 저장 보고서 목록, 행마다 제목·서식·작성자·기간·작성일과 동작 단추 */
+  .attachments.rep-list { gap: 6px; }
+  .rep-row { display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 7px; }
+  .rep-row:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  .rep-t { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rep-m { font-size: 11.5px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rep-acts { display: flex; gap: 5px; margin-top: 4px; }
+  .rep-act { font-family: var(--sans); font-size: 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 5px; padding: 3px 9px; cursor: pointer; white-space: nowrap; }
+  .rep-act:hover { border-color: var(--accent); color: var(--accent-strong); }
+  /* 목록 대신 띄우는 안내 — 적재 중·빈 목록·적재 실패 */
+  .rep-msg { margin: auto 0; padding: 0 12px; text-align: center; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; color: var(--ink-faint); }
 
   /* 더미 페이지 — 엔진 미탑재라 배율 조작이 없어 캔버스 폭에 맞추고 A4 비율만 유지 */
   #stage { flex: 0 0 auto; width: min(794px, 100%); margin-left: auto; margin-right: auto; }
@@ -1558,7 +1580,7 @@
         <div class="rail-head">
           <div class="rail-tabs">
             <button class="rail-tab active" type="button" data-railtab="data" title="데이터"><span class="g">▦</span><span class="tl">데이터</span></button>
-            <button class="rail-tab" type="button" data-railtab="pages" title="페이지"><span class="g">▤</span><span class="tl">페이지</span></button>
+            <button class="rail-tab" type="button" data-railtab="reports" title="보고서"><span class="g">❏</span><span class="tl">보고서</span></button>
           </div>
           <span class="rail-actions">
             <button class="iconbtn" id="collapseLeft" type="button" title="접기"><span class="g">⇤</span></button>
@@ -1570,6 +1592,9 @@
         </div>
         <!-- 데이터 목록 — 카탈로그(data/datasets/index.json) 렌더 소관, 부제는 기간·필터 요약 -->
         <div class="attachments" id="dataList"></div>
+        <!-- 보고서 목록 — 저장 보고서(GET /api/reports) 렌더 소관, 보고서 탭 전용 -->
+        <div class="attachments rep-list" id="reportList"></div>
+        <!-- 페이지 툴바·트리 — 탭 없이 화면 미노출, 문서 흐름(setDocPages 등)이 참조하는 요소 -->
         <!-- 페이지 툴바 — 새 페이지 추가 + 썸네일↔목록 토글. 구현 TreeListWidget도 상단 툴바에 추가·보기 컨트롤을 둔다 -->
         <div class="pages-tools" id="pagesTools">
           <button class="pg-add" type="button"><span class="g">＋</span><span class="txt">새 페이지</span></button>
@@ -1589,35 +1614,45 @@
       <div class="canvas" id="canvas">
         <!-- 시작 화면 — 문서 미생성 상태의 진입점, 생성 시 스테이지로 교체 -->
         <div class="startpanel" id="startPanel">
-          <div class="start-head">
-            <span class="t">새 보고서를 시작하세요</span>
-            <span class="s">서식을 먼저 고르거나, 데이터를 먼저 불러오거나, 무엇을 만들지 적어 주세요.</span>
+          <div class="start-intro">
+            <div class="start-head">
+              <h1 class="start-brand">A-Lab Report</h1>
+              <span class="t">MES/ERP 데이터로 보고서를 작성하고 수치까지 검증하는 보고서 Agent</span>
+            </div>
+            <ol class="start-steps" aria-label="사용 방법">
+              <li>
+                <span class="n" aria-hidden="true">1</span>
+                <span class="t">시작 방법 선택</span>
+                <span class="s">제공 템플릿 또는 빈 화면</span>
+              </li>
+              <li>
+                <span class="n" aria-hidden="true">2</span>
+                <span class="t">MES/ERP 데이터 자동 조회</span>
+                <span class="s">요청에 필요한 데이터를 조회</span>
+              </li>
+              <li>
+                <span class="n" aria-hidden="true">3</span>
+                <span class="t">템플릿에 배치해 작성</span>
+                <span class="s">조회 결과를 서식 항목에 배치</span>
+              </li>
+              <li>
+                <span class="n" aria-hidden="true">4</span>
+                <span class="t">Agent가 수치 검증</span>
+                <span class="s">본문 수치를 조회 결과와 대조</span>
+              </li>
+            </ol>
           </div>
           <div class="start-row">
             <button class="start-card" type="button" data-start="template">
               <span class="g">▥</span>
-              <span class="t">템플릿으로 시작</span>
-              <span class="s">기존 보고서 서식을 고른 뒤, 그 서식이 요구하는 데이터를 연결합니다.</span>
+              <span class="t">제공 템플릿으로 시작</span>
+              <span class="s">준비된 보고서 서식을 고른 뒤, 그 서식이 요구하는 데이터를 연결합니다.</span>
             </button>
-            <button class="start-card" type="button" data-start="data">
-              <span class="g">▦</span>
-              <span class="t">데이터로 시작</span>
-              <span class="s">사내 데이터베이스에서 표를 고르면 그 내용에 맞는 서식으로 작성합니다.</span>
+            <button class="start-card" type="button" data-start="blank">
+              <span class="g">▢</span>
+              <span class="t">빈 화면에서 시작</span>
+              <span class="s">서식 없이 빈 문서를 바로 엽니다. 대화창에 요청을 적어 작성을 이어 갑니다.</span>
             </button>
-            <button class="start-card" type="button" data-start="merge">
-              <span class="g">⧉</span>
-              <span class="t">보고서 통합</span>
-              <span class="s">이미 작성한 보고서 여러 건을 합쳐 상위 보고서로 다시 씁니다.</span>
-            </button>
-          </div>
-          <div class="start-card start-chat">
-            <span class="g">✦</span>
-            <span class="t">대화로 시작</span>
-            <span class="s">목적만 알려 주시면 필요한 데이터와 서식을 제안하고, 대화로 이어서 완성합니다.</span>
-            <div class="chat-box">
-              <textarea id="startInput" rows="1" placeholder="예: 최근 생산 실적을 공장장 보고용으로 정리해 줘"></textarea>
-              <button class="chat-send" id="startSend" type="button" title="보내기">↑</button>
-            </div>
           </div>
         </div>
         <div id="stage" style="display:none">
@@ -1776,6 +1811,7 @@
 <!-- 서버 연동 모듈 — 신규 로직은 js/ 하위 파일로 분리 -->
 <script src="js/api.js"></script>
 <script src="js/account.js"></script>
+<script src="js/reports.js"></script>
 <script>
   (function () {
     var app = document.getElementById('app');
@@ -2394,11 +2430,15 @@
       });
     });
 
-    // 좌측 레일 탭 (페이지 | 첨부파일 | 찾기) + foot 전환
+    // 좌측 레일 탭 (데이터 | 보고서) + foot 전환 — 페이지 트리는 탭이 없어 항상 감춤
     function setRailTab(key) {
       document.querySelectorAll('.rail-tab').forEach(function (t) {
         t.classList.toggle('active', t.getAttribute('data-railtab') === key);
       });
+      // 보고서 목록은 보고서 탭 전용 — 탭에 들어올 때마다 서버 목록을 다시 읽음
+      var rlist = document.getElementById('reportList');
+      if (rlist) rlist.style.display = key === 'reports' ? 'flex' : 'none';
+      if (key === 'reports') refreshReports();
       document.getElementById('pages').style.display = key === 'pages' ? 'flex' : 'none';
       // 페이지 툴바(추가·보기 토글)는 페이지 탭 전용
       var ptools = document.getElementById('pagesTools');
@@ -2429,6 +2469,87 @@
     });
     var dataAdd = document.getElementById('dataAdd');
     if (dataAdd) dataAdd.addEventListener('click', function () { showToast('데이터 불러오기 (구현 예정)'); });
+
+    // ── 보고서 탭 — 선택 계정의 저장 보고서 목록, 적재는 js/reports.js 소관
+    var reportListEl = document.getElementById('reportList');
+    var reportSeq = 0;   // 늦게 도착한 이전 요청의 응답 폐기용
+    function reportMsg(text) {
+      if (!reportListEl) return;
+      reportListEl.innerHTML = '';
+      var el = document.createElement('div');
+      el.className = 'rep-msg';
+      el.textContent = text;
+      reportListEl.appendChild(el);
+    }
+    // 일자 표기 — 서버 값(YYYY-MM-DD[ HH:MM:SS])의 날짜 부분
+    function reportDay(v) { return v ? String(v).slice(0, 10) : ''; }
+    // 목록 렌더 — 제목·서식·작성자·기간·작성일은 서버 값이라 텍스트로만 기입
+    function renderReportRail(list) {
+      if (!reportListEl) return;
+      if (!list.length) { reportMsg('저장된 보고서가 없습니다'); return; }
+      reportListEl.innerHTML = '';
+      list.forEach(function (r) {
+        var tpl = tplOf(r.templateId);
+        var period = r.periodFrom || r.periodTo ? reportDay(r.periodFrom) + ' ~ ' + reportDay(r.periodTo) : '기간 없음';
+        var row = document.createElement('div');
+        row.className = 'rep-row';
+        row.setAttribute('data-id', r.id);
+        [['rep-t', r.title],
+         ['rep-m', tpl ? tpl.name : r.templateId],
+         ['rep-m', r.writer + ' · 작성 ' + reportDay(r.createdAt)],
+         ['rep-m', '대상 ' + period]].forEach(function (x) {
+          var s = document.createElement('span');
+          s.className = x[0];
+          s.textContent = x[1];
+          s.title = x[1];   // 좁은 레일에서 잘린 문구 확인용
+          row.appendChild(s);
+        });
+        var acts = document.createElement('span');
+        acts.className = 'rep-acts';
+        [['open', '열기'], ['use', '데이터로 사용']].forEach(function (x) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'rep-act';
+          b.setAttribute('data-act', x[0]);
+          b.textContent = x[1];
+          acts.appendChild(b);
+        });
+        row.appendChild(acts);
+        reportListEl.appendChild(row);
+      });
+    }
+    function refreshReports() {
+      if (!reportListEl || !window.AlabReports) return;
+      var mine = ++reportSeq;
+      var acct = window.AlabAccount ? AlabAccount.current() : null;
+      reportMsg('불러오는 중…');
+      AlabReports.load(acct ? acct.id : '').then(function (list) {
+        if (mine === reportSeq) renderReportRail(list);
+      }, function (err) {
+        if (mine === reportSeq) reportMsg('보고서 목록을 불러오지 못했습니다: ' + err.message);
+      });
+    }
+    if (reportListEl) reportListEl.addEventListener('click', function (ev) {
+      var btn = ev.target.closest ? ev.target.closest('.rep-act') : null;
+      var row = btn ? btn.closest('.rep-row') : null;
+      if (!row) return;
+      if (btn.getAttribute('data-act') === 'open') {
+        // 열기 — 주소를 저장 보고서 진입점(?report=)으로 바꿔 같은 경로로 지면 표시, 계정은 싣지 않음(새로고침 때 계정 전환 유지)
+        history.replaceState(null, '', '?report=' + encodeURIComponent(row.getAttribute('data-id')));
+        openSavedReport();
+      } else showToast('보고서를 데이터로 사용하는 기능은 준비 중입니다');
+    });
+    // 새 보고서로 지면을 닫으면 주소의 보고서 지정도 해제 — 새로고침 때 닫은 보고서가 다시 열리지 않게
+    var reportCloseBtn = document.getElementById('newReportBtn');
+    if (reportCloseBtn) reportCloseBtn.addEventListener('click', function () {
+      if (new URLSearchParams(location.search).get('report')) history.replaceState(null, '', location.pathname);
+    });
+    // 목록이 달라지는 시점(계정 전환·보고서 저장)의 갱신 — 보고서 탭이 열려 있을 때만 다시 읽음
+    function refreshReportsIfOpen() {
+      var on = document.querySelector('.rail-tab.active');
+      if (on && on.getAttribute('data-railtab') === 'reports') refreshReports();
+    }
+    if (window.AlabAccount) AlabAccount.onChange(refreshReportsIfOpen);
 
     // 시작 화면 ↔ 문서 — 진입 카드 선택 시 더미 페이지 노출, 새 보고서로 복귀
     var startPanel = document.getElementById('startPanel');
@@ -2511,26 +2632,15 @@
       agentHistory = [];
     }
     showDoc(false);
-    // 시작 카드 세 갈래 — 각자 전용 창을 염, 대화 갈래는 카드 밖 입력란 소관
+    // 시작 카드 두 갈래 — 서식 선택 창 또는 빈 지면, 데이터·통합 갈래는 시작 화면 미노출
     document.querySelectorAll('.start-card[data-start]').forEach(function (c) {
       c.addEventListener('click', function () {
         var kind = c.getAttribute('data-start');
         if (kind === 'data') openPick();
         else if (kind === 'merge') openMerge();
         else if (kind === 'template') openTpl();
+        else if (kind === 'blank') showBlankDoc();
       });
-    });
-    // 대화로 시작 — 입력란이 진입 수단, 빈 입력은 전송 없이 입력란 포커스
-    var startInput = document.getElementById('startInput');
-    var startSend = document.getElementById('startSend');
-    function sendStart() {
-      if (startAsk(startInput ? startInput.value : '') && startInput) startInput.value = '';
-    }
-    if (startSend) startSend.addEventListener('click', sendStart);
-    if (startInput) startInput.addEventListener('keydown', function (ev) {
-      if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing) return;
-      ev.preventDefault();   // 줄바꿈 대신 전송 — 줄바꿈은 Shift+Enter 소관
-      sendStart();
     });
     var newReportBtn = document.getElementById('newReportBtn');
     if (newReportBtn) newReportBtn.addEventListener('click', function () { showDoc(false); });
@@ -3068,6 +3178,7 @@
     }
     // 개발용 구현 — 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
     function showSavedPage(id, docNo) {
+      refreshReportsIfOpen();   // 저장 직후 좌측 레일 보고서 목록에 반영
       var acct = window.AlabAccount && AlabAccount.current();
       AlabApi.getJson('reports/' + encodeURIComponent(id) + '?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
         if (j.html && docPage) docPage.innerHTML = j.html;
@@ -3092,7 +3203,7 @@
       }).catch(function (err) { showToast('저장하지 못했습니다: ' + err.message); })
         .then(function () { devSaveBtn.disabled = false; });
     });
-    // 임시 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 목록 화면 연동 전 확인용
+    // 저장 보고서 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 탭 「열기」와 주소 직접 진입 공용
     function openSavedReport() {
       var q = new URLSearchParams(location.search);
       var id = q.get('report');
@@ -3563,7 +3674,7 @@
       return ask && !askTooLong(ask) ? ask : '';
     }
 
-    // 서식 선택 — 서식 이름의 빈 문서를 열고 요청을 Agent에 전달, 지면 기안은 후속 단계
+    // 서식 선택 — 서식 이름의 빈 문서를 열고 요청을 작성 모드·서식 고정으로 Agent에 전달
     function runTpl(id) {
       var t = tplOf(id);
       var ask = tplAsk();
@@ -3573,7 +3684,7 @@
       showBlankDoc();
       if (docnameEl) docnameEl.textContent = t.name;
       setDocPages([t.name]);
-      sendAgentChat(ask);
+      sendAgentChat(ask, { mode: 'draft', template: t.id });
     }
 
     // 자동 서식 — 서식 없이 요청만 Agent에 전달, 「대화로 시작」과 같은 경로
@@ -3602,11 +3713,7 @@
     // 대화 시작 — 빈 입력·길이 초과는 전송하지 않음, 전송했으면 true
     function startAsk(text) {
       var ask = String(text || '').trim();
-      if (!ask) {
-        if (startInput) startInput.focus();
-        return false;
-      }
-      if (askTooLong(ask)) return false;
+      if (!ask || askTooLong(ask)) return false;
       showBlankDoc();
       sendAgentChat(ask);
       return true;
