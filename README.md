@@ -32,7 +32,7 @@ npm run dev
 | `public/report-mockup/js/` | 목업 서버 연동 모듈 — 신규 화면 로직 분리 위치 |
 | `public/report-mockup/reports.html` | 저장 보고서 임시 목록 — 제목 선택 시 `index.html?report={id}&account={계정}`로 지면 열기 |
 | `public/report-mockup/eval.html` | 테스트 케이스 리포트(개발용) — 성과지표 요약, 테스트 케이스 판정·수정 내역, 검증 루프 집계(초안 1회 통과·재작성 통과·오류 범주 분포), 실행 기록 목록과 실행별 타임라인 |
-| `public/eval-data/` | 측정 결과(`results.json`)·Agent 실행 기록(`runs/`) — 추적 제외, 테스트 케이스 리포트가 정적 파일로 읽음 |
+| `public/eval-data/` | 측정 결과(`results.json`)·Agent 실행 기록(`runs/`) — 저장소 추적·데모 빌드 포함, 테스트 케이스 리포트가 정적 파일로 읽음 |
 | `src/app/api/health/` | 서버 상태 확인 — DB 연결·LLM 키 설정 여부 |
 | `src/app/api/agent/` | Agent 대화 진입점 — 계정·작성 모드·서식 지정·이전 턴 조회 검증, 조회 계획·tool 호출·결과·출처를 NDJSON 스트림으로 중계(계약은 `docs/mvp-plan.md` §12) |
 | `src/app/api/accounts/` | 샘플 계정 목록 |

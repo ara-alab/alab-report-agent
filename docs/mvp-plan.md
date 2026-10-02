@@ -169,7 +169,7 @@ MES/ERP 데이터를 조회·분석해 기업 서식 보고서를 자동 기안�
 - 성과지표와 테스트 케이스는 분리 — 성과지표는 시연 요청 세트의 품질 수치, 테스트 케이스는 입력·예상결과·실제결과 묶음의 통과 여부
 - 측정 정의: 성과지표는 `scripts/eval/metrics.json`, 테스트 케이스는 `scripts/eval/cases.json` — 저장소 추적
 - 측정 실행: `node scripts/eval/run.mjs [--cases] [--metrics] [--only TC1,R2] [--note "수정 내용"]` — 서버를 `ALAB_AGENT_RUN_RECORD=1` 로 실행한 로컬 개발 서버 대상(`EVAL_BASE_URL`, 기본 `http://localhost:3002`), 인자 없으면 둘 다 실행
-- 측정 결과: `public/eval-data/results.json`(추적 제외) — 테스트 케이스 리포트(`/report-mockup/eval.html`)로 제시
+- 측정 결과: `public/eval-data/results.json`(저장소 추적, 데모 빌드에 포함) — 테스트 케이스 리포트(`/report-mockup/eval.html`)로 제시
 - 측정 직전 보고서 저장소(`alab_report` 스키마)의 시험 저장분 비움 — 비울 테이블 범위는 실행 전 확인
 
 ### 성과지표

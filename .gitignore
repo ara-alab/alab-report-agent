@@ -33,5 +33,3 @@ next-env.d.ts
 .gstack/
 .local/
 
-# 실행 기록·측정 결과 (ALAB_AGENT_RUN_RECORD)
-/public/eval-data/

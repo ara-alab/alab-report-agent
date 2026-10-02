@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-// 보관 위치 — 측정 리포트 화면이 정적 파일로 읽는 경로, 저장소 추적 제외
+// 보관 위치 — 측정 리포트 화면이 정적 파일로 읽는 경로, 저장소 추적 대상
 const DIR = path.join(process.cwd(), "public", "eval-data", "runs");
 const INDEX = "index.ndjson";
 // 목록 요약의 요청 문장 길이 상한
