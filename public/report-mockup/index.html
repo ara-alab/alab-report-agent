@@ -1646,6 +1646,10 @@
               <button class="chat-chip" type="button" data-soon>템플릿 추천</button>
               <button class="chat-chip" type="button" data-soon>문단 다시 쓰기</button>
             </div>
+            <!-- 개발용 구현 — 작성 모드 지정, UI 실구현 단계에서 교체 -->
+            <div id="devMode" style="font-size:12px">
+              모드 <select id="devModeSel"><option value="">자동</option><option value="draft">작성</option><option value="ask">질문</option></select>
+            </div>
             <div class="chat-box">
               <textarea id="chatInput" rows="2" placeholder="보고서 작성 지시를 입력하세요"></textarea>
               <button class="chat-send" id="chatSend" type="button" title="보내기">↑</button>
@@ -2792,7 +2796,7 @@
         var card = document.createElement('button');
         card.className = 'chat-opt';
         card.type = 'button';
-        card.innerHTML = '<span class="sys">' + it.sys + '</span>' +
+        card.innerHTML = (it.sys ? '<span class="sys">' + it.sys + '</span>' : '') +
           '<span class="nm">' + it.nm + '</span>' +
           '<span class="sub">' + it.sub + '</span>';
         card.addEventListener('click', function () {
@@ -2828,8 +2832,15 @@
       query_equipment_status: '설비 상태 집계', query_material_flow: '자재 수불 집계',
       analyze_kpi: 'KPI 계산', check_limits: '규격 이탈 판정', resolve_week: '주차 기간 확인',
       list_datasets: '데이터 목록 확인', describe_table: '테이블 구조 확인', run_sql: 'SQL 조회',
-      recommend_templates: '서식 확인', draft_report: '보고서 초안 작성', save_report: '보고서 저장', list_reports: '보고서 목록 확인'
+      recommend_templates: '서식 확인', draft_report: '보고서 초안 작성', save_report: '보고서 저장', list_reports: '보고서 목록 확인',
+      propose_templates: '서식 후보 제안'
     };
+    // 개발용 구현 — 모드 스위치 값, 인자로 넘긴 지정이 우선
+    function agentOptions(opts) {
+      if (opts) return opts;
+      var sel = document.getElementById('devModeSel');
+      return sel && sel.value ? { mode: sel.value } : {};
+    }
     // 조회 진행 한 줄 — 도구·핵심 입력(기간·대상), 결과 도착 시 행 수 또는 오류 덧붙임
     function stepText(ev) {
       var inp = ev.input || {};
@@ -2894,8 +2905,8 @@
       });
     }
 
-    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송
-    function sendAgentChat(textArg) {
+    // Agent 요청 — 인자 문장이 있으면 그 문장, 없으면 대화 입력란 내용 전송, opts 는 작성 모드·서식 지정(개발용)
+    function sendAgentChat(textArg, opts) {
       var fromInput = typeof textArg !== 'string';
       var text = fromInput ? (chatInputEl ? chatInputEl.value.trim() : '') : textArg.trim();
       if (!text || agentAbort || !window.AlabApi || askTooLong(text)) return;
@@ -2921,6 +2932,8 @@
       var ctrl = agentAbort = new AbortController();
       var body = { messages: turns };
       if (demoUser.id) body.account = demoUser.id;
+      var mo = agentOptions(opts);
+      Object.keys(mo).forEach(function (k) { body[k] = mo[k]; });
       AlabApi.stream('agent', body, function (ev) {
         if (ev.type === 'delta') {
           answer += ev.text;
@@ -2948,7 +2961,7 @@
             if (!ev.ok) el.classList.add('err');
           }
         } else if (ev.type === 'retry') {
-          // 출력 한도로 잘린 응답 — 그 전 본문은 중간 안내로 옮기고 재작성 표시
+          // 출력 한도 잘림·작성 모드 초안 재지시 — 그 전 본문은 중간 안내로 옮기고 사유별 재작성 표시
           if (answer.trim()) {
             var cut = document.createElement('div');
             cut.className = 'chat-step chat-note';
@@ -2959,8 +2972,23 @@
           bubble.textContent = '작성 중…';
           var rt = document.createElement('div');
           rt.className = 'chat-step';
-          rt.textContent = '· 응답이 길어 다시 작성 중';
+          rt.textContent = ev.reason === 'draft_missing' ? '· 초안 작성을 다시 요청하는 중' : '· 응답이 길어 다시 작성 중';
           steps.appendChild(rt);
+        } else if (ev.type === 'plan') {
+          // 개발용 구현 — 조회 계획 한 줄 표시
+          var pl = document.createElement('div');
+          pl.className = 'chat-step';
+          pl.textContent = '· 조회 계획 ' + ev.step + '단계: ' + ev.calls.map(function (c) { return TOOL_LABELS[c.name] || c.name; }).join(', ');
+          steps.appendChild(pl);
+        } else if (ev.type === 'templates') {
+          // 개발용 구현 — 서식 후보 카드, 고르면 그 서식으로 작성 요청
+          pushChatOpts('서식 후보', ev.candidates.map(function (c) {
+            return { id: c.id, name: c.name, sys: '', nm: escHtml(c.name), sub: escHtml(c.reason) };
+          }), function (it, done) {
+            if (agentAbort) return;
+            done();
+            sendAgentChat(it.name + ' 서식으로 작성해 주세요', { mode: 'draft', template: it.id });
+          });
         } else if (ev.type === 'draft') {
           showDraft(ev, steps);
         } else if (ev.type === 'saved') {

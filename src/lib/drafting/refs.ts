@@ -186,9 +186,13 @@ export function knownLabels(cache: RunCache): string[] {
   return [...out].sort((a, b) => b.length - a.length);
 }
 
+// 조회 결과 문자열 대조 — 띄어쓰기만 바꿔 옮긴 경우도 허용, 문자·숫자 구성은 그대로 일치해야 함
+const squeeze = (v: string) => v.replace(/\s+/g, "");
+const loosely = (k: string) => new RegExp([...squeeze(k)].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*"), "g");
+
 export function bareNumbers(text: string, known: readonly string[] = []): string[] {
   let rest = text.replace(inlineRefs(), " ");
-  for (const k of known) if (rest.includes(k)) rest = rest.split(k).join(" ");
+  for (const k of known) if (squeeze(rest).includes(squeeze(k))) rest = rest.replace(loosely(k), " ");
   for (const re of ALLOWED_NUMERIC) rest = rest.replace(re, " ");
   return [...rest.matchAll(/\d[\d,.]*%?/g)].map((m) => m[0]);
 }

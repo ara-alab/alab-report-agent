@@ -7,6 +7,14 @@ export type MonthWeek = { week: number; from: string; to: string };
 
 export class CalendarError extends Error {}
 
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 기준일 — 서버 시각을 한국 시간 날짜로 환산
+export function todayKst(): { date: string; weekday: string } {
+  const kst = new Date(Date.now() + 9 * 3600_000);
+  return { date: kst.toISOString().slice(0, 10), weekday: WEEKDAYS[kst.getUTCDay()] };
+}
+
 const DAY_MS = 86_400_000;
 const ymd = (t: number) => new Date(t).toISOString().slice(0, 10);
 
