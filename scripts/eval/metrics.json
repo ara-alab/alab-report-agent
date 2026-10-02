@@ -1,0 +1,63 @@
+{
+  "description": "성과지표 측정 정의 — 목표값, 시연 요청 세트와 서식 키별 기대 원천 정답표, 시드 이상 사례 정답표",
+  "targets": {
+    "query_success": { "label": "데이터 조회 성공률", "target": 0.95, "unit": "rate" },
+    "fill_rate": { "label": "필수항목 자동작성률", "target": 0.9, "unit": "rate" },
+    "number_match": { "label": "원본 데이터-보고서 수치 일치율", "target": 0.95, "unit": "rate" },
+    "mapping": { "label": "Template Mapping 정확도", "target": 0.9, "unit": "rate" },
+    "anomaly": { "label": "이상 판정 정확도", "target": 1, "unit": "rate", "maxFalsePositives": 0 }
+  },
+  "queryTools": ["query_production_summary", "query_defect_breakdown", "query_equipment_status", "query_material_flow", "analyze_kpi", "check_limits", "run_sql"],
+  "sourceGroups": {
+    "production": ["query_production_summary", "query_defect_breakdown", "analyze_kpi", "run_sql"],
+    "equipment": ["query_equipment_status", "check_limits", "analyze_kpi", "run_sql"],
+    "impact": ["query_production_summary", "query_defect_breakdown", "query_equipment_status", "check_limits", "analyze_kpi", "run_sql"]
+  },
+  "requests": [
+    {
+      "id": "R1",
+      "kind": "시드 이상 사례 포함",
+      "account": "prod-kim",
+      "request": "9월 둘째 주 주간 생산실적 보고서를 작성해 주세요.",
+      "template": "weekly-summary",
+      "period": { "from": "2026-09-07", "to": "2026-09-13" },
+      "keys": { "summary_stats": "production", "daily_table": "production" }
+    },
+    {
+      "id": "R2",
+      "kind": "일반",
+      "account": "prod-kim",
+      "request": "8월 10일부터 21일까지 생산 실적을 라인별로 분석한 보고서를 작성해 주세요.",
+      "template": "production-brief",
+      "period": { "from": "2026-08-10", "to": "2026-08-21" },
+      "keys": { "kpi_stats": "production", "group_table": "production" }
+    },
+    {
+      "id": "R3",
+      "kind": "일반",
+      "account": "qa-seo",
+      "request": "9월 14일부터 18일까지 설비 가동 현황 보고서를 작성해 주세요.",
+      "template": "equipment-brief",
+      "period": { "from": "2026-09-14", "to": "2026-09-18" },
+      "keys": { "kpi_stats": "equipment", "group_table": "equipment" }
+    },
+    {
+      "id": "R4",
+      "kind": "시드 이상 사례 포함",
+      "account": "qa-seo",
+      "request": "8월 넷째 주 설비 이상과 품질 영향 보고서를 작성해 주세요.",
+      "template": "equipment-quality-impact",
+      "period": { "from": "2026-08-24", "to": "2026-08-30" },
+      "keys": { "kpi_stats": "impact", "violation_table": "equipment", "impact_table": "impact" }
+    }
+  ],
+  "anomalies": {
+    "account": "qa-seo",
+    "period": { "from": "2026-08-03", "to": "2026-09-25" },
+    "cases": [
+      { "id": "humidity-appearance", "entity": "M-101", "item": "HUM", "dates": ["2026-08-26", "2026-08-27"] },
+      { "id": "post-pressure-stop", "entity": "F-101", "item": "PRS", "dates": ["2026-09-09"] },
+      { "id": "vibration-spike", "entity": "M-201", "item": "VIB", "dates": ["2026-09-22", "2026-09-23", "2026-09-24"] }
+    ]
+  }
+}

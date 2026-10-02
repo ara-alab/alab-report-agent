@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>테스트 케이스 리포트</title>
+<!-- 개발용 구현 — 측정 결과(eval-data/results.json: 성과지표·테스트 케이스)와 Agent 실행 기록(eval-data/runs, ALAB_AGENT_RUN_RECORD=1 일 때 저장) 표시 -->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; color: #222; background: #fff; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 28px 0 8px; }
+  .top { display: flex; align-items: baseline; gap: 16px; }
+  .muted { color: #777; font-size: 12.5px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1400px; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f3f3f3; white-space: nowrap; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.run { cursor: pointer; }
+  tr.run:hover { background: #f6fbfb; }
+  tr.run.open { background: #eef7f7; }
+  .cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 4px; }
+  .card { border: 1px solid #ccc; border-radius: 6px; padding: 8px 12px; min-width: 150px; }
+  .card .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .card .k { font-size: 12.5px; color: #555; }
+  .timeline { font: 12px/1.55 ui-monospace, monospace; white-space: pre-wrap; margin: 0; }
+  .timeline .err { color: #b3261e; }
+  .timeline .pass { color: #0b6b63; }
+  .timeline .ans { color: #333; }
+  .msg { margin: 8px 0; color: #a00; }
+  .ok { color: #0b6b63; font-weight: 600; }
+  .ng { color: #b3261e; font-weight: 600; }
+  .runlink { color: #0b5cad; cursor: pointer; text-decoration: underline; }
+  ul.checks, ul.attempts { margin: 0; padding-left: 16px; }
+  .answer { margin-top: 4px; color: #444; font-size: 12.5px; white-space: pre-wrap; max-height: 9em; overflow: auto; }
+  .kind { display: inline-block; margin: 0 4px 2px 0; padding: 0 6px; border: 1px solid #e3b3ae; border-radius: 10px; font-size: 12px; color: #8c1d18; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>테스트 케이스 리포트</h1>
+  <a href="index.html">← 보고서 화면</a>
+</div>
+<div class="muted">측정 결과는 측정 스크립트(scripts/eval/run.mjs)가, 실행 기록은 ALAB_AGENT_RUN_RECORD=1 로 실행한 서버가 public/eval-data 에 남깁니다.</div>
+
+<h2>성과지표</h2>
+<div id="metricMsg" class="msg"></div>
+<div id="metricMeta" class="muted"></div>
+<table id="metricTable" hidden>
+  <thead><tr><th>지표</th><th>목표</th><th>실측</th><th>근거 건수</th><th>달성</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>테스트 케이스</h2>
+<div id="caseMsg" class="msg"></div>
+<table id="caseTable" hidden>
+  <thead><tr><th>ID</th><th>범주</th><th>입력</th><th>예상결과</th><th>실제결과(최근 실행)</th><th>판정</th><th>수정 내역(실행 이력)</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>검증 루프 집계</h2>
+<div id="loopCards" class="cards"></div>
+<table id="kindTable" hidden><thead><tr><th>오류 범주</th><th>건수</th></tr></thead><tbody></tbody></table>
+
+<h2>실행 기록</h2>
+<div id="runMsg" class="msg"></div>
+<table id="runTable" hidden>
+  <thead><tr><th>시각</th><th>요청</th><th>모드</th><th>모델 호출</th><th>도구 호출(오류)</th><th>초안 작성(검증 실패)</th><th>재지시</th><th>오류 범주</th><th>결과</th><th>토큰 입력/출력</th><th>소요</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script src="js/loop-labels.js"></script>
+<script>
+(function () {
+  var DATA = '../eval-data/';
+  function el(tag, text, cls) {
+    var e = document.createElement(tag);
+    if (text != null) e.textContent = String(text);
+    if (cls) e.className = cls;
+    return e;
+  }
+  function card(box, k, v) {
+    var c = el('div', null, 'card');
+    c.appendChild(el('div', v, 'v'));
+    c.appendChild(el('div', k, 'k'));
+    box.appendChild(c);
+  }
+  function num(v) { return typeof v === 'number' ? v.toLocaleString() : (v == null ? '' : String(v)); }
+  function pct(a, b) { return b ? (a / b * 100).toFixed(1) + '%' : '-'; }
+  function fetchText(path) {
+    return fetch(DATA + path, { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; });
+  }
+  function parseNdjson(text) {
+    return text.split('\n').filter(function (l) { return l.trim(); }).map(function (l) {
+      try { return JSON.parse(l); } catch (e) { return null; }
+    }).filter(Boolean);
+  }
+
+  function rateText(v) { return v == null ? '-' : (v * 100).toFixed(1) + '%'; }
+  function verdict(pass) { return el('span', pass ? '통과' : '미달', pass ? 'ok' : 'ng'); }
+  function stamp(at) { return at ? new Date(at).toLocaleString('ko-KR') : ''; }
+  // 실행 기록 열기 — 행 아래에 해당 실행의 이벤트 타임라인 표시
+  function runLink(runId, tr, cols) {
+    if (!runId) return el('span', '-');
+    var a = el('span', runId, 'runlink');
+    a.addEventListener('click', function () { toggleTimeline(tr, runId, cols); });
+    return a;
+  }
+
+  fetchText('results.json').then(function (text) {
+    var r = null;
+    try { r = text ? JSON.parse(text) : null; } catch (e) { r = null; }
+    renderMetrics(r && r.metrics);
+    renderCases(r && r.cases);
+  });
+
+  // 성과지표 요약 — 기준별 목표·실측·근거 건수·달성 여부
+  function renderMetrics(m) {
+    var msg = document.getElementById('metricMsg');
+    if (!m || !Array.isArray(m.summary)) { msg.textContent = '성과지표 측정 결과가 없습니다.'; return; }
+    document.getElementById('metricMeta').textContent = '측정 ' + stamp(m.at) + (m.commit ? ' · 코드 ' + m.commit + (m.dirty ? '(미커밋 변경 포함)' : '') : '') + (m.partial ? ' · 일부 요청만 측정' : '') + ' · 시연 요청 ' + (m.requests ? m.requests.length : 0) + '건';
+    var table = document.getElementById('metricTable');
+    m.summary.forEach(function (s) {
+      var tr = el('tr');
+      tr.appendChild(el('td', s.label));
+      tr.appendChild(el('td', rateText(s.target) + (s.maxFalsePositives != null ? ', 오탐 ' + s.maxFalsePositives + '건' : '')));
+      tr.appendChild(el('td', rateText(s.value) + (s.falsePositives != null ? ', 오탐 ' + s.falsePositives + '건' : ''), 'n'));
+      tr.appendChild(el('td', num(s.ok) + ' / ' + num(s.total) + (s.unverified ? ' (검증 불가 요청 ' + s.unverified + '건)' : ''), 'n'));
+      var td = el('td');
+      td.appendChild(verdict(s.pass));
+      tr.appendChild(td);
+      table.tBodies[0].appendChild(tr);
+    });
+    table.hidden = false;
+  }
+
+  // 테스트 케이스 — 입력·예상결과·최근 실행의 실제결과·판정, 실행 이력은 수정 내역과 실행 기록 연결
+  function renderCases(cases) {
+    var msg = document.getElementById('caseMsg');
+    if (!Array.isArray(cases) || !cases.length) { msg.textContent = '테스트 케이스 실행 결과가 없습니다.'; return; }
+    var table = document.getElementById('caseTable');
+    cases.forEach(function (c) {
+      var last = c.attempts && c.attempts.length ? c.attempts[c.attempts.length - 1] : null;
+      var tr = el('tr');
+      tr.appendChild(el('td', c.id));
+      tr.appendChild(el('td', c.category));
+      tr.appendChild(el('td', c.request + (c.mode ? '  [모드 ' + c.mode + ']' : '  [모드 자동]') + '  [' + c.account + ']'));
+      tr.appendChild(el('td', c.expected));
+      var actual = el('td');
+      if (!last) actual.textContent = '미실행';
+      else {
+        var ul = el('ul', null, 'checks');
+        last.checks.forEach(function (k) {
+          var li = el('li');
+          li.appendChild(el('span', k.pass ? '○ ' : '✕ ', k.pass ? 'ok' : 'ng'));
+          li.appendChild(document.createTextNode(k.type + ': ' + (k.actual == null ? '없음' : k.actual)));
+          ul.appendChild(li);
+        });
+        actual.appendChild(ul);
+        if (last.answer) actual.appendChild(el('div', '응답: ' + last.answer, 'answer'));
+      }
+      tr.appendChild(actual);
+      var vd = el('td');
+      if (last) vd.appendChild(verdict(last.verdict === 'pass'));
+      tr.appendChild(vd);
+      var hist = el('td');
+      var ol = el('ul', null, 'attempts');
+      (c.attempts || []).forEach(function (a) {
+        var li = el('li');
+        li.appendChild(el('span', a.verdict === 'pass' ? '통과 ' : '실패 ', a.verdict === 'pass' ? 'ok' : 'ng'));
+        li.appendChild(document.createTextNode(stamp(a.at) + (a.commit ? ' · ' + a.commit + (a.dirty ? '*' : '') : '') + (a.note ? ' · ' + a.note : '') + ' · '));
+        li.appendChild(runLink(a.runId, tr, 7));
+        ol.appendChild(li);
+      });
+      hist.appendChild(ol);
+      tr.appendChild(hist);
+      table.tBodies[0].appendChild(tr);
+    });
+    table.hidden = false;
+  }
+
+  // 실행 1건 타임라인 — 경과 ms 와 이벤트 종류별 한 줄, 초안 검증 실패는 범주별 오류 위치
+  function eventLines(e) {
+    var t = (e.ms != null ? ('+' + (e.ms / 1000).toFixed(1) + 's').padStart(8) + '  ' : '');
+    if (e.type === 'run') return [['', '요청: ' + e.request + (e.mode ? '  [모드 ' + e.mode + ']' : '') + (e.template ? '  [서식 ' + e.template + ']' : '') + (e.section ? '  [섹션 ' + e.section + ']' : '')]];
+    if (e.type === 'plan') return [['', t + '조회 계획 ' + e.step + '단계: ' + e.calls.map(function (c) { return c.name; }).join(', ')]];
+    if (e.type === 'tool_call') return [['', t + '호출 ' + e.name + ' ' + JSON.stringify(e.input).slice(0, 240)]];
+    if (e.type === 'tool_result') {
+      if (e.ok) return [['pass', t + '결과 ' + e.name + ' → ' + (e.name === 'draft_report' ? '검증 통과' : (typeof e.rowCount === 'number' ? e.rowCount + '행' : '완료')) + (e.queryId ? ' (' + e.queryId + ')' : '')]];
+      var out = [['err', t + '결과 ' + e.name + ' → ' + AlabLoop.kind(e.errorKind)]];
+      if (e.name === 'draft_report') AlabLoop.issueLines(e).forEach(function (l) { out.push(['err', '            ' + l]); });
+      if (e.error) out.push(['err', '            ' + String(e.error).split('\n').join('\n            ')]);
+      return out;
+    }
+    if (e.type === 'retry') return [['err', t + '재지시: ' + AlabLoop.retry(e.reason)]];
+    if (e.type === 'draft') return [['pass', t + '초안 표시: ' + (e.template ? e.template.name : '') + ' · 수치 ' + (e.numbers ? e.numbers.length : 0) + '건 · 경고 ' + (e.warnings ? e.warnings.length : 0) + '건']];
+    if (e.type === 'saved') return [['pass', t + '저장: ' + e.docNo]];
+    if (e.type === 'templates') return [['', t + '서식 후보: ' + e.candidates.map(function (c) { return c.id; }).join(', ')]];
+    if (e.type === 'delta') return [['ans', t + '응답: ' + e.text]];
+    if (e.type === 'error') return [['err', t + '오류(' + e.code + '): ' + e.error]];
+    if (e.type === 'done') return [['', t + '종료: 모델 호출 ' + e.steps + '회 · 토큰 입력 ' + num(e.usage && e.usage.input_tokens) + ' / 출력 ' + num(e.usage && e.usage.output_tokens)]];
+    return [];
+  }
+  // 행 아래 타임라인 토글 — 같은 실행이면 닫고, 다른 실행이면 교체
+  function toggleTimeline(tr, runId, cols) {
+    var next = tr.nextSibling;
+    if (next && next.classList && next.classList.contains('detail')) {
+      next.remove();
+      tr.classList.remove('open');
+      if (next.dataset.run === runId) return;
+    }
+    tr.classList.add('open');
+    var dt = el('tr', null, 'detail');
+    dt.dataset.run = runId;
+    var td = el('td');
+    td.colSpan = cols;
+    var pre = el('pre', '불러오는 중…', 'timeline');
+    td.appendChild(pre);
+    dt.appendChild(td);
+    tr.after(dt);
+    fetchText('runs/' + encodeURIComponent(runId) + '.ndjson').then(function (text) {
+      pre.textContent = '';
+      if (!text) { pre.textContent = '실행 기록 파일이 없습니다.'; return; }
+      parseNdjson(text).forEach(function (e) {
+        eventLines(e).forEach(function (l) {
+          pre.appendChild(el('span', l[1] + '\n', l[0]));
+        });
+      });
+    });
+  }
+
+  // 실행 기록 목록 — 최신순, 상단에 검증 루프 집계 카드와 오류 범주 분포
+  fetchText('runs/index.ndjson').then(function (text) {
+    var msg = document.getElementById('runMsg');
+    var rows = text ? parseNdjson(text).reverse() : [];
+    if (!rows.length) { msg.textContent = '실행 기록이 없습니다. 서버를 ALAB_AGENT_RUN_RECORD=1 로 실행하면 대화 요청마다 기록됩니다.'; return; }
+    var drafted = rows.filter(function (r) { return r.draftCalls > 0; });
+    var firstPass = drafted.filter(function (r) { return r.draftFailures === 0 && r.drafted; });
+    var recovered = drafted.filter(function (r) { return r.draftFailures > 0 && r.drafted; });
+    var cards = document.getElementById('loopCards');
+    card(cards, '실행 기록', num(rows.length));
+    card(cards, '초안 작성 실행', num(drafted.length));
+    card(cards, '초안 1회 통과', firstPass.length + ' (' + pct(firstPass.length, drafted.length) + ')');
+    card(cards, '검증 실패 후 재작성 통과', recovered.length + ' (' + pct(recovered.length, drafted.length) + ')');
+    card(cards, '초안 미작성 종료', num(drafted.length - firstPass.length - recovered.length));
+    card(cards, '도구 오류', num(rows.reduce(function (n, r) { return n + (r.toolErrors || 0); }, 0)));
+    card(cards, '재지시', num(rows.reduce(function (n, r) { return n + (r.retries ? r.retries.length : 0); }, 0)));
+    var kinds = {};
+    rows.forEach(function (r) { Object.keys(r.kinds || {}).forEach(function (k) { kinds[k] = (kinds[k] || 0) + r.kinds[k]; }); });
+    var kt = document.getElementById('kindTable');
+    Object.keys(kinds).sort(function (a, b) { return kinds[b] - kinds[a]; }).forEach(function (k) {
+      var tr = el('tr');
+      tr.appendChild(el('td', AlabLoop.kind(k)));
+      tr.appendChild(el('td', kinds[k], 'n'));
+      kt.tBodies[0].appendChild(tr);
+    });
+    kt.hidden = !Object.keys(kinds).length;
+
+    var table = document.getElementById('runTable');
+    rows.forEach(function (r) {
+      var tr = el('tr', null, 'run');
+      tr.appendChild(el('td', new Date(r.at).toLocaleString('ko-KR')));
+      tr.appendChild(el('td', r.request));
+      tr.appendChild(el('td', r.mode || '자동'));
+      tr.appendChild(el('td', r.steps, 'n'));
+      tr.appendChild(el('td', r.toolCalls + ' (' + r.toolErrors + ')', 'n'));
+      tr.appendChild(el('td', r.draftCalls ? r.draftCalls + ' (' + r.draftFailures + ')' : '-', 'n'));
+      tr.appendChild(el('td', r.retries && r.retries.length ? r.retries.map(AlabLoop.retry).join(', ') : '-'));
+      var kc = el('td');
+      Object.keys(r.kinds || {}).forEach(function (k) { kc.appendChild(el('span', AlabLoop.kind(k) + ' ' + r.kinds[k], 'kind')); });
+      tr.appendChild(kc);
+      tr.appendChild(el('td', r.aborted ? '중단' : r.error ? '오류(' + r.error + ')' : r.saved ? '저장' : r.drafted ? '초안' : '답변'));
+      tr.appendChild(el('td', r.usage ? num(r.usage.input_tokens) + ' / ' + num(r.usage.output_tokens) : '-', 'n'));
+      tr.appendChild(el('td', (r.durationMs / 1000).toFixed(1) + 's', 'n'));
+      tr.addEventListener('click', function () { toggleTimeline(tr, r.id, 11); });
+      table.tBodies[0].appendChild(tr);
+    });
+    table.hidden = false;
+  });
+})();
+</script>
+</body>
+</html>
