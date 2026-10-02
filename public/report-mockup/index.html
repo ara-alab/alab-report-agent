@@ -1510,6 +1510,9 @@
   /* Agent 초안 지면 — 연속 스크롤 지면 전 임시로 A4 비율 해제, 높이는 applyZoom 이 내용 높이로 지정 */
   #page.draft { aspect-ratio: auto; }
 
+/* 개발용 구현 — 지면 섹션 선택 표시, UI 실구현 단계에서 교체 */
+#docPage .rpt-key { cursor: pointer; }
+#docPage .rpt-key:hover { outline: 1px dashed #8a8a8a; outline-offset: 2px; }
 </style>
 
 <div class="wrap">
@@ -2597,7 +2600,7 @@
     if (window.ResizeObserver && docPage) new ResizeObserver(function () { if (pageBox && pageBox.classList.contains('draft')) applyZoom(); }).observe(docPage);
     function setDraftPage(on) {
       // 개발용 구현 — Agent 초안이 아닌 지면으로 바뀌면 명시 저장 대상 해제
-      if (!on) { lastDraft = null; lastDraftRef = null; }
+      if (!on) { lastDraft = null; lastDraftRef = null; lastDraftRecord = null; editReport = null; }
       if (!pageBox) return;
       pageBox.classList.toggle('draft', on);
       if (!on) pageBox.style.height = '';
@@ -3015,6 +3018,8 @@
     // 개발용 구현 — 최근 초안의 기안 입력·저장 결과(대화 이력 draft 로 전송)와 요청 원문(명시 저장용)
     var lastDraftRef = null;
     var lastDraftRequest = '';
+    var lastDraftRecord = null;   // 개발용 구현 — 저장 시 함께 보내는 기안 기록(수정 재개용)
+    var editReport = null;   // 개발용 구현 — 수정 중인 저장 보고서 {id, docNo, editable}, 요청마다 report 로 전송
     function showDraft(d, steps) {
       lastDraft = d;
       if (!docOn) showDoc(true);
@@ -3067,6 +3072,7 @@
       if (demoUser.id) body.account = demoUser.id;
       var mo = agentOptions(opts);
       Object.keys(mo).forEach(function (k) { body[k] = mo[k]; });
+      if (editReport && editReport.editable) body.report = editReport.id;
       AlabApi.stream('agent', body, function (ev) {
         if (ev.type === 'delta') {
           answer += ev.text;
@@ -3125,6 +3131,7 @@
         } else if (ev.type === 'draft') {
           showDraft(ev, steps);
           turnDraft = lastDraftRef = { input: ev.input };
+          lastDraftRecord = ev.record || null;
           lastDraftRequest = text;
         } else if (ev.type === 'saved') {
           if (lastDraftRef) lastDraftRef.saved = { id: ev.id, docNo: ev.docNo };
@@ -3132,7 +3139,11 @@
         } else if (ev.type === 'done') {
           if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
           turnQueries = (ev.queries || []).filter(function (q) { return JSON.stringify(q.input).length <= AGENT_MAX_QUERY_INPUT; });
-        } else if (ev.type === 'error') failed = ev.error;
+        } else if (ev.type === 'error') {
+          failed = ev.error;
+          // 개발용 구현 — 연 뒤 수정 불가로 판정된 저장본은 섹션 수정·갱신 대상에서 해제
+          if (ev.code === 'report_not_editable' && editReport) editReport.editable = false;
+        }
         chatLogEl.scrollTop = chatLogEl.scrollHeight;
       }, ctrl.signal).then(function () {
         if (failed || !answer) throw new Error(failed || '응답이 비어 있습니다.');
@@ -3195,7 +3206,10 @@
       var ref = lastDraftRef;
       var body = { templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: lastDraftRequest, fills: d.fills, numbers: d.numbers };
       if (demoUser.id) body.account = demoUser.id;
+      if (lastDraftRecord) body.draft = lastDraftRecord;
+      // 저장본 수정 중이면 같은 보고서 갱신
       if (ref.saved) body.id = ref.saved.id;
+      else if (editReport && editReport.editable) body.id = editReport.id;
       devSaveBtn.disabled = true;
       AlabApi.postJson('reports', body).then(function (j) {
         ref.saved = { id: j.report.id, docNo: j.report.docNo };
@@ -3215,14 +3229,47 @@
         if (!docOn) showDoc(true);
         docPage.innerHTML = j.html;
         setDraftPage(true);
-        lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 명시 저장 대상 아님
+        lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 수정 전까지 명시 저장 대상 아님
         lastDraftRef = null;
+        lastDraftRecord = null;
+        editReport = { id: j.report.id, docNo: j.report.docNo, editable: !!j.report.editable };
+        agentHistory = [];
         applyZoom();
         if (docnameEl) docnameEl.textContent = j.report.title;
         setDocPages([j.report.title]);
-        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo);
+        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo + (j.report.editable ? '' : ' (수정 불가)'));
       }).catch(function (err) { showToast('보고서를 불러오지 못했습니다: ' + err.message); });
     }
+    // 개발용 구현 — 지면 섹션(data-key) 선택 시 아래에 수정 요청 입력창 표시, 보내면 해당 키만 수정하도록 요청
+    if (docPage) docPage.addEventListener('click', function (ev) {
+      var sec = ev.target.closest && ev.target.closest('.rpt-key[data-key]');
+      if (!sec || ev.target.closest('.dev-sec-box')) return;
+      if (!lastDraftRef && !(editReport && editReport.editable)) {
+        showToast(editReport ? '이 보고서는 수정에 필요한 기안 기록이 없어 수정할 수 없습니다' : '수정할 Agent 초안이 없습니다');
+        return;
+      }
+      var old = docPage.querySelector('.dev-sec-box');
+      if (old) old.remove();
+      var key = sec.getAttribute('data-key');
+      var label = sec.getAttribute('data-label') || key;
+      var boxEl = document.createElement('div');
+      boxEl.className = 'dev-sec-box';
+      boxEl.style.cssText = 'margin:6px 0;padding:6px;border:1px dashed #888;font-size:12px';
+      boxEl.innerHTML = '<div>「' + escHtml(label) + '」 섹션 수정 요청</div><textarea rows="2" style="width:100%"></textarea><button type="button" data-act="send">수정 요청</button> <button type="button" data-act="close">닫기</button>';
+      // 인라인 섹션(제목·표 칸)은 감싼 제목·표 뒤에 표시
+      var anchor = sec.tagName === 'SPAN' ? (sec.closest('h1, h2, h3, table') || sec) : sec;
+      anchor.insertAdjacentElement('afterend', boxEl);
+      var ta = boxEl.querySelector('textarea');
+      ta.focus();
+      boxEl.addEventListener('click', function (e) {
+        var act = e.target.getAttribute && e.target.getAttribute('data-act');
+        if (act === 'close') boxEl.remove();
+        if (act !== 'send' || !ta.value.trim() || agentAbort) return;
+        var msg = '「' + label + '」 섹션 수정: ' + ta.value.trim();
+        boxEl.remove();
+        sendAgentChat(msg, { mode: 'draft', section: key });
+      });
+    });
     // 드로어 전송 — 시작 화면에선 「대화로 시작」과 같은 경로로 빈 지면부터 염
     function sendDrawer() {
       if (docOn || !chatInputEl) return sendAgentChat();

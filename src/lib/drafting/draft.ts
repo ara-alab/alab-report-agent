@@ -149,6 +149,8 @@ class Builder {
           kind: "list",
           items: raw.map((x, i) => {
             const o = typeof x === "string" ? { text: x } : isObj(x) ? x : { text: "" };
+            // 강조 행 표시 — 참·거짓 외 값은 내용 소실 방지를 위해 거부
+            if (o.lead !== undefined && typeof o.lead !== "boolean") this.fail(`${key}[${i}].lead: 참·거짓 값이어야 합니다(강조 행 표시). 소제목은 text 에 포함하세요`);
             return {
               text: this.text(o.text, `${key}[${i}]`, LIMITS.listItem),
               when: o.when === undefined ? undefined : this.text(o.when, `${key}[${i}].when`, LIMITS.listWhen),
@@ -238,7 +240,7 @@ export async function templateCatalog(account: Account) {
       keys: Object.fromEntries(
         Object.entries(t.keys)
           .filter(([k, s]) => (s.by === "llm" || s.by === "query") && !k.startsWith("period_") && k !== "doc_title")
-          .map(([k, s]) => [k, { kind: s.kind, label: s.label, required: s.required }]),
+          .map(([k, s]) => [k, { kind: s.kind, label: s.label, required: s.required, ...(s.guide ? { guide: s.guide } : {}) }]),
       ),
     })),
   };

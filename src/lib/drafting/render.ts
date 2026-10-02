@@ -92,12 +92,18 @@ export function fillIssues(keys: Record<string, KeySpec>, fills: Fills) {
   return issues;
 }
 
-// 서식 렌더 — 미작성 키는 표시용 자리표시로, 선언 없는 자리표시자는 원문 유지
+// 블록 키 — 문단·지표·표·목록, 화면의 섹션 선택 단위
+const BLOCK_KINDS = new Set(["text", "stats", "table", "list"]);
+
+// 서식 렌더 — 미작성 키는 표시용 자리표시로, 선언 없는 자리표시자는 원문 유지, 블록 키·LLM 서술 메타는 data-key 래퍼로 식별
 export function renderTemplate(html: string, keys: Record<string, KeySpec>, fills: Fills) {
   return html.replace(/\{\{([a-z][a-z0-9_]*)\}\}/g, (all, k: string) => {
     const s = keys[k];
     if (!s) return all;
     const f = fills[k];
-    return f?.kind === s.kind ? renderFill(f) : missing(s);
+    const body = f?.kind === s.kind ? renderFill(f) : missing(s);
+    const attrs = `class="rpt-key" data-key="${esc(k)}" data-label="${esc(s.label)}"`;
+    if (BLOCK_KINDS.has(s.kind)) return `<div ${attrs}>${body}</div>`;
+    return s.kind === "meta" && s.by === "llm" ? `<span ${attrs}>${body}</span>` : body;
   });
 }

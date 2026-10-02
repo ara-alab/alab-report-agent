@@ -1,7 +1,8 @@
-// Agent 요청 본문 검증 — 대화 이력(턴별 조회·초안 이력 포함)·계정·작성 모드·서식 지정, 운영 route 와 개발 재생 route 공용
+// Agent 요청 본문 검증 — 대화 이력(턴별 조회·초안 이력 포함)·계정·작성 모드·서식 지정·저장본 수정·섹션 지정, 운영 route 와 개발 재생 route 공용
 import "server-only";
 import { getAccount, type Account } from "@/lib/accounts";
 import { getTemplate } from "@/lib/drafting/templates";
+import { ReportError, getReportDraft, type DraftRecord } from "@/lib/reports";
 import { isReusableQuery } from "./tools";
 
 const MAX_TURNS = 20;
@@ -19,7 +20,9 @@ export type HistoryDraft = { input: Record<string, unknown>; saved?: { id: numbe
 export type ChatTurn = { role: "user" | "assistant"; content: string; queries?: HistoryQuery[]; draft?: HistoryDraft };
 // 작성 모드 — draft 는 초안 작성, ask 는 대화 답변, 미지정은 모델 판단
 export type AgentMode = "draft" | "ask";
-export type AgentOptions = { mode?: AgentMode; template?: { id: string; name: string } };
+// 저장본 수정 — 작성 계정 본인의 저장 보고서와 기안 기록
+export type ReportContext = { id: number; docNo: string; requestText?: string; draft: DraftRecord };
+export type AgentOptions = { mode?: AgentMode; template?: { id: string; name: string }; report?: ReportContext; section?: string };
 
 export class AgentRequestError extends Error {
   constructor(message: string, readonly code = "bad_request") {
@@ -71,12 +74,26 @@ function parseTurns(list: unknown): ChatTurn[] {
   return turns;
 }
 
-// 작성 모드·서식 지정 — 서식 지정은 작성 모드에서만
-async function parseOptions(body: Record<string, unknown>): Promise<AgentOptions> {
-  const { mode, template } = body;
+const SECTION_RE = /^[a-z][a-z0-9_]{0,63}$/;
+
+// 작성 모드·서식 지정·저장본·섹션 — 서식 지정은 작성 모드에서만, 섹션 지정은 질문 모드 불가이며 작성 모드로 처리
+async function parseOptions(body: Record<string, unknown>, account: Account): Promise<AgentOptions> {
+  const { mode, template, report, section } = body;
   if (mode !== undefined && mode !== "draft" && mode !== "ask") throw new AgentRequestError('mode 는 "draft" 또는 "ask" 여야 합니다.');
   if (template !== undefined && mode !== "draft") throw new AgentRequestError('template 은 mode 가 "draft" 일 때만 쓸 수 있습니다.');
-  const opts: AgentOptions = { mode };
+  if (section !== undefined && (typeof section !== "string" || !SECTION_RE.test(section))) throw new AgentRequestError("section 은 서식 키 이름이어야 합니다.");
+  if (section !== undefined && mode === "ask") throw new AgentRequestError('section 은 mode 가 "ask" 일 때 쓸 수 없습니다.');
+  if (report !== undefined && (!Number.isSafeInteger(report) || (report as number) < 1)) throw new AgentRequestError("report 는 보고서 ID여야 합니다.");
+  const opts: AgentOptions = { mode: section !== undefined ? "draft" : mode };
+  if (section !== undefined) opts.section = section as string;
+  if (report !== undefined) {
+    try {
+      opts.report = await getReportDraft(report as number, account);
+    } catch (e) {
+      if (e instanceof ReportError) throw new AgentRequestError(e.message, "bad_report");
+      throw e;
+    }
+  }
   if (template !== undefined) {
     const t = typeof template === "string" ? await getTemplate(template) : null;
     if (!t) throw new AgentRequestError(`알 수 없는 서식입니다: ${String(template)}`);
@@ -94,5 +111,5 @@ export async function parseAgentRequest(body: unknown): Promise<{ account: Accou
     const bad = t.queries?.find((q) => !isReusableQuery(q.name, account));
     if (bad) throw new AgentRequestError(`이전 턴 조회로 재실행할 수 없는 도구입니다: ${bad.name}`);
   }
-  return { account, turns, options: await parseOptions(body) };
+  return { account, turns, options: await parseOptions(body, account) };
 }

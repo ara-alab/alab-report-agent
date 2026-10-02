@@ -18,6 +18,7 @@ docker_process_sql --database=mysql <<-EOSQL
 	    period_to DATE NULL,                        -- 대상 기간 종료일
 	    request_text TEXT NULL,                     -- 기안 요청 원문
 	    fills JSON NOT NULL CHECK (JSON_VALID(fills)),  -- 서식 키별 구조화 채움 값
+	    draft JSON NULL CHECK (draft IS NULL OR JSON_VALID(draft)),  -- 수정 재개용 기안 입력(참조 형태)과 참조 원천 조회 목록
 	    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	    INDEX ix_report_account (account_id, created_at)

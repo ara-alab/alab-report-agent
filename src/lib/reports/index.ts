@@ -41,10 +41,16 @@ export type SaveInput = {
   requestText?: string;
   fills: unknown;
   numbers?: unknown;
+  draft?: unknown;
 };
+
+// 수정 재개용 기안 기록 — 참조 형태 기안 입력과 참조 원천 조회(이름·입력), 열 때 조회 재실행 후 다시 검증
+export type DraftRecord = { input: Record<string, unknown>; queries: { name: string; input: unknown }[] };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_NUMBERS = 500;
+const MAX_DRAFT_QUERIES = 200;
+const MAX_DRAFT_CHARS = 200_000;
 
 const finite = (v: unknown) => typeof v === "number" && Number.isFinite(v);
 const optFinite = (v: unknown) => v === undefined || v === null || finite(v);
@@ -68,6 +74,17 @@ function parseNumbers(raw: unknown): ReportNumber[] {
   });
 }
 
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+function parseDraftRecord(raw: unknown): DraftRecord | null {
+  if (raw === undefined || raw === null) return null;
+  const ok =
+    isObj(raw) && isObj(raw.input) && Array.isArray(raw.queries) && raw.queries.length <= MAX_DRAFT_QUERIES &&
+    raw.queries.every((q) => isObj(q) && typeof q.name === "string" && "input" in q) && JSON.stringify(raw).length <= MAX_DRAFT_CHARS;
+  if (!ok) throw new ReportError(`기안 기록은 {input, queries} 이고 조회 ${MAX_DRAFT_QUERIES}건·${MAX_DRAFT_CHARS}자 이하여야 합니다.`);
+  return { input: raw.input as Record<string, unknown>, queries: (raw.queries as { name: string; input: unknown }[]).map((q) => ({ name: q.name, input: q.input })) };
+}
+
 // 저장 대상 채움 값 — 서식 키 선언과 대조, 시스템 발급 키는 컬럼 값으로 대체하므로 제외
 async function validated(input: SaveInput) {
   const t = await getTemplate(input.templateId);
@@ -81,7 +98,7 @@ async function validated(input: SaveInput) {
   const bad = fillIssues(t.keys, parsed.fills).filter((x) => !x.startsWith("필수 키 누락"));
   if (bad.length) throw new ReportError(bad.join("; "));
   const fills: Fills = Object.fromEntries(Object.entries(parsed.fills).filter(([k]) => t.keys[k].by !== "system"));
-  return { t, fills, numbers: parseNumbers(input.numbers) };
+  return { t, fills, numbers: parseNumbers(input.numbers), draft: parseDraftRecord(input.draft) };
 }
 
 // 문서번호 — 서식 접두어·작성일별 일련번호, 같은 트랜잭션에서 행 잠금으로 중복 방지
@@ -104,8 +121,10 @@ async function insertNumbers(conn: PoolConnection, id: number, numbers: ReportNu
 }
 
 // 저장 — id 없으면 신규 발번, 있으면 작성 계정 본인의 보고서만 내용 교체(문서번호 유지)
+// 기안 기록은 채움 값과 함께 교체, 기록 없이 저장하면 비워 수정 불가로 전환
 export async function saveReport(input: SaveInput, account: Account) {
-  const { t, fills, numbers } = await validated(input);
+  const { t, fills, numbers, draft } = await validated(input);
+  const draftJson = draft ? JSON.stringify(draft) : null;
   const conn = await getPool("app").getConnection();
   let id = input.id;
   try {
@@ -113,8 +132,8 @@ export async function saveReport(input: SaveInput, account: Account) {
     if (id === undefined) {
       const docNo = await issueDocNo(conn, t.docPrefix);
       const [res] = await conn.query<ResultSetHeader>(
-        `INSERT INTO ${DB}.report (doc_no, template_id, title, account_id, writer, period_from, period_to, request_text, fills) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [docNo, t.id, input.title.trim(), account.id, `${account.dept} ${account.name} ${account.title}`, input.periodFrom ?? null, input.periodTo ?? null, input.requestText ?? null, JSON.stringify(fills)],
+        `INSERT INTO ${DB}.report (doc_no, template_id, title, account_id, writer, period_from, period_to, request_text, fills, draft) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [docNo, t.id, input.title.trim(), account.id, `${account.dept} ${account.name} ${account.title}`, input.periodFrom ?? null, input.periodTo ?? null, input.requestText ?? null, JSON.stringify(fills), draftJson],
       );
       id = res.insertId;
     } else {
@@ -123,8 +142,8 @@ export async function saveReport(input: SaveInput, account: Account) {
       if (cur.account_id !== account.id) throw new ReportError("작성 계정만 보고서를 수정할 수 있습니다.", 403);
       if (cur.template_id !== t.id) throw new ReportError("저장된 보고서의 서식은 바꿀 수 없습니다.");
       await conn.query(
-        `UPDATE ${DB}.report SET title = ?, period_from = ?, period_to = ?, fills = ? WHERE report_id = ?`,
-        [input.title.trim(), input.periodFrom ?? null, input.periodTo ?? null, JSON.stringify(fills), id],
+        `UPDATE ${DB}.report SET title = ?, period_from = ?, period_to = ?, fills = ?, draft = ? WHERE report_id = ?`,
+        [input.title.trim(), input.periodFrom ?? null, input.periodTo ?? null, JSON.stringify(fills), draftJson, id],
       );
       await conn.query(`DELETE FROM ${DB}.report_number WHERE report_id = ?`, [id]);
     }
@@ -172,7 +191,7 @@ export async function getReport(id: number, account: Account) {
   const v = visible(account);
   const pool = getPool("app");
   const [[row]] = await pool.query<RowDataPacket[]>(
-    `SELECT ${SUMMARY_COLS}, request_text AS requestText, fills, DATE(created_at) AS issuedDate FROM ${DB}.report WHERE report_id = ? AND ${v.sql}`,
+    `SELECT ${SUMMARY_COLS}, request_text AS requestText, fills, draft IS NOT NULL AS hasDraft, DATE(created_at) AS issuedDate FROM ${DB}.report WHERE report_id = ? AND ${v.sql}`,
     [id, ...v.params],
   );
   if (!row) return null;
@@ -181,11 +200,26 @@ export async function getReport(id: number, account: Account) {
        FROM ${DB}.report_number WHERE report_id = ? ORDER BY num_key`,
     [id],
   );
-  const { issuedDate, fills, ...meta } = row as unknown as ReportSummary & { requestText: string | null; fills: unknown; issuedDate: string };
+  const { issuedDate, fills, hasDraft, ...meta } = row as unknown as ReportSummary & { requestText: string | null; fills: unknown; hasDraft: number; issuedDate: string };
   const stored = (typeof fills === "string" ? JSON.parse(fills) : fills) as Fills;
   return {
     ...meta,
+    // 수정 가능 — 작성 계정 본인이고 기안 기록이 있는 보고서
+    editable: Boolean(hasDraft) && meta.accountId === account.id,
     fills: { ...stored, ...systemFills({ docNo: String(row.docNo), date: String(issuedDate) }) },
     numbers: numbers.map((n) => ({ ...n, call: typeof n.call === "string" ? JSON.parse(n.call) : n.call })),
   };
+}
+
+// 수정 재개 원천 — 작성 계정 본인의 보고서만, 기안 기록 없으면 수정 불가 오류
+export async function getReportDraft(id: number, account: Account) {
+  const [[row]] = await getPool("app").query<RowDataPacket[]>(
+    `SELECT report_id AS id, doc_no AS docNo, account_id AS accountId, request_text AS requestText, draft FROM ${DB}.report WHERE report_id = ?`,
+    [id],
+  );
+  if (!row) throw new ReportError("보고서를 찾을 수 없습니다.", 404);
+  if (row.accountId !== account.id) throw new ReportError("작성 계정만 보고서를 수정할 수 있습니다.", 403);
+  if (!row.draft) throw new ReportError("이 보고서는 수정에 필요한 기안 기록이 저장되지 않아 수정할 수 없습니다.");
+  const draft = (typeof row.draft === "string" ? JSON.parse(row.draft) : row.draft) as DraftRecord;
+  return { id: Number(row.id), docNo: String(row.docNo), requestText: (row.requestText as string | null) ?? undefined, draft };
 }

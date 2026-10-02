@@ -6,10 +6,11 @@ import type { Account } from "@/lib/accounts";
 import { getAnthropic, withPremiumModel } from "@/lib/llm/client";
 import { aiRequestOptions } from "@/lib/llm/request-context";
 import { consumeAiStream } from "@/lib/llm/stream";
-import { DraftError } from "@/lib/drafting/draft";
-import { isDraftingTool, restoreDraft, type DraftContext } from "@/lib/drafting/tools";
+import { DraftError, LIMITS } from "@/lib/drafting/draft";
+import { draftRecord, isDraftingTool, restoreDraft, sectionField, type DraftContext } from "@/lib/drafting/tools";
+import { getTemplate, type KeySpec } from "@/lib/drafting/templates";
 import { systemPrompt } from "./prompt";
-import type { AgentOptions, ChatTurn } from "./request";
+import type { AgentOptions, ChatTurn, ReportContext } from "./request";
 import { buildTools, executeTool, isReusableQuery } from "./tools";
 
 // 모델 호출 상한 — 마지막 호출은 tool 없이 답변만 강제
@@ -45,6 +46,65 @@ function modeNote(opts: AgentOptions): string | null {
   if (opts.mode !== "draft") return null;
   const fixed = opts.template ? ` 서식은 ${opts.template.name}(${opts.template.id})로 지정되어 있으며 다른 서식으로 바꾸지 않습니다.` : "";
   return `[작성 모드] 이번 요청은 보고서 초안 작성 요청입니다. 필요한 조회를 마친 뒤 draft_report 로 초안을 작성합니다.${fixed}`;
+}
+// 섹션 수정 지시 — 화면에서 고른 키 하나만 revise 로 교체
+// 섹션 글자 수 상한 — 제목·메타·문단은 키 전체, 목록은 항목당, 지표·표는 미표시
+function sectionLimit(key: string, spec: KeySpec): string {
+  if (key === "doc_title") return ` 글자 수 상한 ${LIMITS.title}자.`;
+  if (spec.kind === "meta") return ` 글자 수 상한 ${LIMITS.meta}자.`;
+  if (spec.kind === "text") return ` 글자 수 상한 ${LIMITS.text}자.`;
+  if (spec.kind === "list") return ` 글자 수 상한 항목당 ${LIMITS.listItem}자.`;
+  return "";
+}
+const sectionNote = (key: string, spec: KeySpec) =>
+  `[섹션 수정] 이번 요청은 현재 초안의 「${spec.label}」(${key}) 섹션 수정 요청입니다. 필요하면 조회를 추가한 뒤 draft_report 를 revise: true 와 ${sectionField(key)} 만으로 호출하고, 다른 키는 바꾸지 않습니다. 기존 값의 문체·길이·구성을 유지하되 작성 방법과 다른 부분은 작성 방법을 따르고 요청한 부분만 바꿉니다.${sectionLimit(key, spec)}${spec.guide ? ` 작성 방법: ${spec.guide}` : ""} 응답은 수정한 섹션과 변경 요지 1~2줄만 적습니다.`;
+
+// 저장본 재검증 — 기안 기록의 조회를 다시 실행하고 기안 입력을 다시 검증, 호출·결과 블록과 제외 조회·초안 오류 반환
+async function replayReport(report: ReportContext, account: Account, ctx: DraftContext) {
+  const uses: Anthropic.ToolUseBlockParam[] = [];
+  const results: Anthropic.ToolResultBlockParam[] = [];
+  const drops: { name: string; error: string }[] = [];
+  for (const [n, q] of report.draft.queries.entries()) {
+    const outcome = isReusableQuery(q.name, account) ? await executeTool(q.name, q.input, account, ctx) : null;
+    if (!outcome || outcome.isError || !outcome.queryId) {
+      drops.push({ name: q.name, error: outcome?.content.slice(0, 500) ?? "재실행할 수 없는 도구" });
+      continue;
+    }
+    const id = `toolu_report_${n}`;
+    uses.push({ type: "tool_use", id, name: q.name, input: q.input as Record<string, unknown> });
+    results.push({ type: "tool_result", tool_use_id: id, content: outcome.content });
+  }
+  try {
+    const content = await restoreDraft(report.draft.input, { id: report.id, docNo: report.docNo }, report.requestText, account, ctx);
+    uses.push({ type: "tool_use", id: "toolu_report_draft", name: "draft_report", input: report.draft.input });
+    results.push({ type: "tool_result", tool_use_id: "toolu_report_draft", content });
+    return { uses, results, drops, error: null };
+  } catch (e) {
+    if (!(e instanceof DraftError)) throw e;
+    return { uses, results, drops, error: e.message };
+  }
+}
+
+// 저장본 수정 가능 여부 — 현재 데이터와 검증 규칙으로 기안 기록이 다시 검증되는지
+export async function reportEditable(report: ReportContext, account: Account) {
+  return (await replayReport(report, account, { cache: new Map() })).error === null;
+}
+
+// 저장본 복원 — 재검증한 기안 기록을 대화 앞에 저장본 열기 턴으로 배치, 실패 시 갱신 대상 미설정
+async function restoreReport(route: string, report: ReportContext, account: Account, ctx: DraftContext): Promise<Anthropic.MessageParam[]> {
+  const r = await replayReport(report, account, ctx);
+  for (const d of r.drops) console.log(JSON.stringify({ type: "agent_history_drop", route, report: report.id, ...d }));
+  if (r.error !== null) {
+    console.log(JSON.stringify({ type: "agent_history_drop", route, report: report.id, name: "draft_report", error: r.error.slice(0, 500) }));
+    return [];
+  }
+  ctx.target = { id: report.id, docNo: report.docNo };
+  return [
+    { role: "user", content: `[저장 보고서 ${report.docNo} 열기] 기안 요청: ${report.requestText ?? "(기록 없음)"}` },
+    { role: "assistant", content: r.uses },
+    { role: "user", content: r.results },
+    { role: "assistant", content: `저장 보고서 ${report.docNo}의 초안을 불러왔습니다.` },
+  ];
 }
 // 작성 모드 재지시 — 이번 실행에서 초안 작성·저장 없이 끝나려 할 때 1회
 const DRAFT_NUDGE = "작성 모드 요청인데 초안이 아직 작성되지 않았습니다. 조회 결과로 draft_report 를 호출해 초안을 작성하세요.";
@@ -96,11 +156,44 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
   const system: Anthropic.TextBlockParam[] = [{ type: "text", text: await systemPrompt(account), cache_control: { type: "ephemeral" } }];
   const tools = buildTools(account);
   // 기안 문맥 — 조회 결과 캐시는 이전 턴 조회 재실행분과 이번 실행분, 작성 모드·고정 서식
-  const ctx: DraftContext = { cache: new Map(), requestText: turns[turns.length - 1]?.content, mode: opts.mode, fixedTemplate: opts.template?.id };
-  const messages = await restoreHistory(route, turns, account, ctx);
+  const ctx: DraftContext = { cache: new Map(), requestText: turns[turns.length - 1]?.content, mode: opts.mode, fixedTemplate: opts.template?.id, section: opts.section };
+  const opened = opts.report ? await restoreReport(route, opts.report, account, ctx) : [];
+  const messages = [...opened, ...(await restoreHistory(route, turns, account, ctx))];
   // 복원 초안·저장 상태 — 이번 실행의 새 초안·저장 여부 판정 기준
   const restored = { draft: ctx.draft, saved: ctx.saved };
-  const note = modeNote(opts);
+  // 실행 조건 기록 — 모드·서식 지정과 이전 턴 조회·초안의 전송·복원 건수, 요청·답변 본문은 미기록
+  const histUses = messages.flatMap((m) => (m.role === "assistant" && Array.isArray(m.content) ? m.content : [])).filter((b) => b.type === "tool_use");
+  console.log(
+    JSON.stringify({
+      type: "agent_run",
+      route,
+      account: account.id,
+      mode: opts.mode ?? null,
+      template: opts.template?.id ?? null,
+      report: opts.report?.id ?? null,
+      section: opts.section ?? null,
+      turns: turns.length,
+      historyQueries: turns.reduce((n, t) => n + (t.queries?.length ?? 0), 0),
+      restoredQueries: histUses.filter((b) => b.name !== "draft_report").length,
+      historyDraft: turns.some((t) => t.draft),
+      restoredDraft: Boolean(restored.draft),
+      savedId: restored.saved?.id ?? null,
+    }),
+  );
+  // 실행 전 거부 — 저장본 복원 실패, 수정할 초안 없음·수정 불가 섹션
+  const stop = (error: string, code: string) => {
+    line({ type: "error", error, code });
+    line({ type: "done", steps: 0, sources: [], queries: [], usage: { input_tokens: 0, output_tokens: 0 } });
+  };
+  if (opts.report && !ctx.target) return stop("저장 보고서의 기안 기록을 현재 데이터로 다시 검증하지 못해 수정할 수 없습니다.", "report_not_editable");
+  let note = modeNote(opts);
+  if (opts.section) {
+    const spec = ctx.draft ? (await getTemplate(ctx.draft.template.id))?.keys[opts.section] : undefined;
+    if (!ctx.draft) return stop("수정할 초안이 없습니다. 초안을 작성하거나 저장 보고서를 연 뒤 섹션을 지정하세요.", "no_draft");
+    // 수정 가능 섹션 — 시스템·계정 키와 LLM 서술이 아닌 메타(대상 기간 등) 제외
+    if (!spec || spec.by === "system" || spec.by === "account" || (spec.kind === "meta" && spec.by !== "llm")) return stop(`이 서식에서 수정할 수 없는 섹션입니다: ${opts.section}`, "bad_section");
+    note = sectionNote(opts.section, spec);
+  }
   if (note) appendNote(messages, note);
   const sources = new Set<string>();
   // 이번 실행의 재실행 가능 조회 — 다음 요청의 assistant 턴 queries 로 되돌려 받는 목록
@@ -193,7 +286,13 @@ export async function runAgent(route: string, account: Account, turns: ChatTurn[
         truncated: outcome.truncated,
         elapsedMs: outcome.elapsedMs,
       });
-      if (ctx.draft && ctx.draft !== before.draft) line({ type: "draft", toolId: block.id, ...ctx.draft, input: ctx.lastInput });
+      // 초안 작성 기록 — 부분 수정 여부·보낸 채움 키·통과 여부, 채움 값 본문은 미기록
+      if (block.name === "draft_report") {
+        const input = block.input as Record<string, unknown>;
+        const fills = input.fills && typeof input.fills === "object" ? Object.keys(input.fills) : [];
+        console.log(JSON.stringify({ type: "agent_draft", route, step, revise: input.revise === true, keys: fills, ok: !outcome.isError, error: outcome.isError ? outcome.content.slice(0, 300) : null }));
+      }
+      if (ctx.draft && ctx.draft !== before.draft) line({ type: "draft", toolId: block.id, ...ctx.draft, input: ctx.draftInput, record: draftRecord(ctx) });
       if (ctx.saved && ctx.saved !== before.saved) line({ type: "saved", toolId: block.id, ...ctx.saved });
       if (ctx.proposed && ctx.proposed !== before.proposed) line({ type: "templates", toolId: block.id, candidates: ctx.proposed });
       results.push({ type: "tool_result", tool_use_id: block.id, content: outcome.content, is_error: outcome.isError });
