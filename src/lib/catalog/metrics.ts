@@ -1,6 +1,17 @@
 // 지표·규격 판정 정의 — 현장 KPI 공식·기본 집계 범위·센서 측정 원천, 분석 엔진은 이 정의로만 SQL 조립
 // SQL 식은 코드 설정값 전용, 사용자 입력은 바인딩 값으로만 전달
 
+// 코드 명칭 원천 — 코드값을 명칭으로 표기하기 위한 마스터 테이블·컬럼명
+export type NameSource = { table: string; code: string; name: string };
+
+// 코드 명칭 원천 목록 — 집계 단위·필터 키별, 명칭 마스터가 없는 키는 미선언
+const NAMES = {
+  eqm: { table: "eq100", code: "eq_cd", name: "eq_nm" },
+  eqmType: { table: "cm010", code: "cd_id", name: "cd_nm" },
+  part: { table: "it100", code: "itm_cd", name: "itm_nm" },
+  worker: { table: "hr100", code: "emp_id", name: "emp_nm" },
+} satisfies Record<string, NameSource>;
+
 // 집계 원천 — FROM 절과 날짜·집계 단위·필터 식
 export type MetricSource = {
   from: string;
@@ -9,6 +20,8 @@ export type MetricSource = {
   // 날짜 외 집계 단위 — 일·주·월은 엔진이 날짜 식으로 생성
   dimensions: Record<string, string>;
   filters: Record<string, { expr: string; description: string }>;
+  // 집계 단위·필터 키별 코드 명칭 원천
+  names?: Record<string, NameSource>;
   // 설비 구분 등 범위 필터 미지정 시 적용할 기본 범위
   defaultScope?: { filter: string; value: string; reason: string };
 };
@@ -38,6 +51,7 @@ export const METRIC_SOURCES: Record<string, MetricSource> = {
       eqm: { expr: "s.eq_cd", description: "설비 코드" },
       part: { expr: "s.itm_cd", description: "품번" },
     },
+    names: NAMES,
     defaultScope: { filter: "eqmType", value: "EG10", reason: "생산 KPI 기준 공정" },
   },
   equipment: {
@@ -50,6 +64,7 @@ export const METRIC_SOURCES: Record<string, MetricSource> = {
       line: { expr: "e.ln_cd", description: "라인 코드" },
       eqm: { expr: "t.eq_cd", description: "설비 코드" },
     },
+    names: { eqm: NAMES.eqm, eqmType: NAMES.eqmType },
   },
 };
 
@@ -104,6 +119,8 @@ export type LimitSource = {
   // 측정 항목 마스터 — 항목명·단위 원천, 컬럼명
   items: { table: string; code: string; name: string; unit: string };
   filters: Record<string, { expr: string; description: string }>;
+  // 대상·대상 구분 코드 명칭 원천
+  names: { entity?: NameSource; entityType?: NameSource };
   // 대상 구분·항목별 하한·상한, 컬럼명
   spec: { table: string; type: string; item: string; lower: string; upper: string };
 };
@@ -122,5 +139,6 @@ export const LIMIT_SOURCE: LimitSource = {
     line: { expr: "e.ln_cd", description: "라인 코드" },
     eqm: { expr: "t.eq_cd", description: "설비 코드" },
   },
+  names: { entity: NAMES.eqm, entityType: NAMES.eqmType },
   spec: { table: "eq120", type: "eq_tp", item: "mi_cd", lower: "lo_lmt", upper: "hi_lmt" },
 };

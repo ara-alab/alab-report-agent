@@ -14,11 +14,20 @@ const GROUP_EXPR: Record<GroupBy, string> = {
   part: "s.itm_cd",
 };
 
+// 그룹 명칭 SQL — 명칭 마스터가 있는 단위만, 라인·날짜 단위는 명칭 없음
+const GROUP_NAME: Record<GroupBy, string> = {
+  day: "NULL",
+  week: "NULL",
+  line: "NULL",
+  eqm: "MAX(e.eq_nm)",
+  part: "MAX(i.itm_nm)",
+};
+
 export const productionSummary = defineQuery({
   name: "query_production_summary",
-  tables: ["pp300", "eq100"],
+  tables: ["pp300", "eq100", "cm010", "it100"],
   description:
-    "기간 내 생산실적(지시·양품·불량 수량)을 설비 구분별로 나누어 일·주·라인·설비·품번 단위로 합산합니다. eqmType 으로 특정 설비 구분만 조회할 수 있습니다. 비율은 반환하지 않습니다.",
+    "기간 내 생산실적(지시·양품·불량 수량)을 설비 구분별로 나누어 일·주·라인·설비·품번 단위로 합산합니다. 설비 구분·설비·품번은 명칭(eqm_type_name·group_name)을 함께 반환합니다. eqmType 으로 특정 설비 구분만 조회할 수 있습니다. 비율은 반환하지 않습니다.",
   inputSchema: {
     type: "object",
     properties: {
@@ -52,10 +61,12 @@ export const productionSummary = defineQuery({
     ];
     const active = filters.filter(([, v]) => v !== undefined);
     return roQuery(
-      `SELECT e.eq_tp AS eqm_type, ${GROUP_EXPR[groupBy]} AS group_key,
+      `SELECT e.eq_tp AS eqm_type, MAX(c.cd_nm) AS eqm_type_name, ${GROUP_EXPR[groupBy]} AS group_key, ${GROUP_NAME[groupBy]} AS group_name,
               SUM(s.ord_qty) AS target_qty, SUM(s.ok_qty) AS good_qty, SUM(s.ng_qty) AS defect_qty,
               COUNT(*) AS row_count
          FROM pp300 s JOIN eq100 e ON e.eq_cd = s.eq_cd
+         LEFT JOIN cm010 c ON c.cd_id = e.eq_tp
+         LEFT JOIN it100 i ON i.itm_cd = s.itm_cd
         WHERE s.wk_dt BETWEEN ? AND ?${active.map(([sql]) => ` AND ${sql}`).join("")}
         GROUP BY eqm_type, group_key
         ORDER BY eqm_type, group_key`,

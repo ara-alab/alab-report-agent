@@ -4,6 +4,7 @@ import type { Account } from "@/lib/accounts";
 import { LIMIT_SOURCE } from "@/lib/catalog";
 import { roQuery } from "@/lib/db";
 import { QueryParamError, codeParam, periodParams, queryIdOf } from "@/lib/queries/registry";
+import { namesOf } from "./names";
 
 type Spec = { type: string; item: string; name: string; lower: number | null; upper: number | null; unit: string | null };
 
@@ -83,6 +84,11 @@ export async function checkLimits(raw: Record<string, unknown>, account: Account
     whereParams,
   );
   const [sum, itemRows, dayRows] = await Promise.all([summary, items, days]);
+  // 대상·대상 구분 코드 명칭 — 명칭 원천이 선언된 경우만
+  const [entityNames, typeNames] = await Promise.all([
+    namesOf(src.names.entity, sum.rows.map((x) => x.entity), account),
+    namesOf(src.names.entityType, sum.rows.map((x) => x.entity_type), account),
+  ]);
 
   const rows = sum.rows.map((row) => {
     const entity = String(row.entity);
@@ -109,7 +115,9 @@ export async function checkLimits(raw: Record<string, unknown>, account: Account
       });
     return {
       entity,
+      ...(src.names.entity ? { entityName: entityNames.get(entity) ?? null } : {}),
       entityType: String(row.entity_type),
+      ...(src.names.entityType ? { entityTypeName: typeNames.get(String(row.entity_type)) ?? null } : {}),
       readings: Number(row.readings),
       flagged: Number(row.flagged ?? 0),
       flaggedWithoutViolation: Number(row.flagged_unexplained ?? 0),

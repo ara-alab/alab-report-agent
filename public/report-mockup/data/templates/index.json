@@ -13,7 +13,7 @@
     "period_label": { "kind": "meta", "by": "query", "label": "대상 기간 명칭", "required": true },
     "period_from": { "kind": "meta", "by": "query", "label": "대상 기간 시작일", "required": true },
     "period_to": { "kind": "meta", "by": "query", "label": "대상 기간 종료일", "required": true },
-    "basis": { "kind": "meta", "by": "llm", "label": "작성근거", "required": true }
+    "basis": { "kind": "meta", "by": "llm", "label": "작성근거", "required": true, "guide": "조회한 데이터 이름·대상 기간·비교 기간·집계 기준을 명사형 개조식 한 줄로 적음" }
   },
   "templates": [
     {

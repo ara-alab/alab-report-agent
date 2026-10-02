@@ -1365,35 +1365,11 @@
   .merge-row .mr-qty { flex: 0 0 auto; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
   .merge-count { flex: 0 0 auto; font-family: var(--mono); font-size: 12.5px; color: var(--ink-muted); }
 
-  /* 데이터 선택 창 — 통합 창과 같은 모달 문법, 표 행·미리보기만 별도 정의 */
-  .pick-body { flex: 1; min-height: 0; overflow-y: auto; padding: 17px 18px; display: flex; flex-direction: column; gap: 14px; }
-  .pick-list { display: flex; flex-direction: column; gap: 6px; }
-  .pick-row { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 7px; font-size: 13.5px; cursor: pointer; }
-  .pick-row:hover { border-color: var(--accent); background: var(--surface-2); }
-  .pick-row.active { border-color: var(--accent); background: var(--accent-weak); }
-  .pick-row .pk-sys { flex: 0 0 auto; font-family: var(--mono); font-size: 11.5px; padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--ink-muted); }
-  .pick-row .pk-nm { flex: 0 0 auto; font-weight: 600; }
-  .pick-row .pk-sub { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pick-row.active .pk-sub { color: var(--accent-deep); }
-  /* 미리보기 — 고른 표의 앞 열·앞 행만, 넘치는 폭은 가로 스크롤 소관 */
-  .pick-prev { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-  .pick-prev .pv-h { display: flex; align-items: baseline; gap: 10px; padding: 9px 13px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 12.5px; }
-  .pick-prev .pv-h .t { font-weight: 600; }
-  .pick-prev .pv-h .s { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); text-align: right; }
-  .pick-prev .pv-scroll { overflow-x: auto; }
-  .pick-prev table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .pick-prev th { padding: 7px 12px; text-align: left; white-space: nowrap; font-weight: 600; color: var(--ink-muted); border-bottom: 1px solid var(--line); }
-  .pick-prev td { padding: 7px 12px; white-space: nowrap; color: var(--ink); border-bottom: 1px solid var(--line); }
-  .pick-prev th.n, .pick-prev td.n { text-align: right; font-variant-numeric: tabular-nums; }
-  .pick-prev tbody tr:last-child td { border-bottom: 0; }
-  .pick-foot { flex: 0 0 auto; padding: 15px 18px; border-top: 1px solid var(--line); }
-  .pick-foot .chat-box textarea[readonly] { cursor: default; }
-
-  /* 두 모달 공통 여백 — 원본 .lib 규칙은 두고 인스턴스에만 덧입힘 */
-  #mergeDlg .lib-head, #pickDlg .lib-head { padding: 13px 18px; }
-  #mergeDlg .lib-title, #pickDlg .lib-title { font-size: 16px; }
-  #mergeDlg .lib-x, #pickDlg .lib-x { width: 24px; height: 24px; }
-  #mergeDlg .chat-box, #pickDlg .chat-box { gap: 8px; padding: 9px 9px 9px 12px; }
+  /* 통합 창 여백 — 원본 .lib 규칙은 두고 인스턴스에만 덧입힘 */
+  #mergeDlg .lib-head { padding: 13px 18px; }
+  #mergeDlg .lib-title { font-size: 16px; }
+  #mergeDlg .lib-x { width: 24px; height: 24px; }
+  #mergeDlg .chat-box { gap: 8px; padding: 9px 9px 9px 12px; }
 
   /* 로그인 계정 칩 — 좁게 모드에선 이름·부서를 접고 이니셜만 남김 */
   .tb-user { display: flex; align-items: center; gap: 7px; padding: 2px 2px 2px 0; }
@@ -1496,6 +1472,8 @@
   .attachments.rep-list { gap: 6px; }
   .rep-row { display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 7px; }
   .rep-row:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  /* 지면에 열린 보고서 — 가벼운 강조 */
+  .rep-row.on { border-color: var(--accent); background: var(--accent-weak); }
   .rep-t { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rep-m { font-size: 11.5px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rep-acts { display: flex; gap: 5px; margin-top: 4px; }
@@ -1510,6 +1488,27 @@
   /* Agent 초안 지면 — 연속 스크롤 지면 전 임시로 A4 비율 해제, 높이는 applyZoom 이 내용 높이로 지정 */
   #page.draft { aspect-ratio: auto; }
 
+/* 개발용 구현 — 지면 섹션 선택 표시, UI 실구현 단계에서 교체 */
+#docPage .rpt-key { cursor: pointer; }
+#docPage .rpt-key:hover { outline: 1px dashed #8a8a8a; outline-offset: 2px; }
+/* 개발용 구현 — 지면 수치 근거 선택, 근거 패널·데이터 상세, UI 실구현 단계에서 교체 */
+#docPage .rpt-num { cursor: help; border-bottom: 1px dotted #8a8a8a; }
+#docPage .rpt-num:hover, #docPage .rpt-num.on { background: #fff3bf; }
+.ev-panel, .ds-detail { font-size: 12px; gap: 12px; }
+.ds-detail { display: flex; flex-direction: column; }
+.ev-sec { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ev-h { font-size: 13px; font-weight: 600; color: var(--ink); word-break: break-all; }
+.ev-sub { font-size: 11.5px; color: var(--ink-faint); font-family: var(--mono); word-break: break-all; }
+.ev-badge { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 11px; font-weight: 400; color: var(--ink-muted); }
+.ev-badge.match { color: #1b7f3b; border-color: #1b7f3b; }
+.ev-badge.mismatch { color: #b42318; border-color: #b42318; }
+.ev-kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 0; }
+.ev-kv dt { color: var(--ink-faint); white-space: nowrap; }
+.ev-kv dd { margin: 0; color: var(--ink); word-break: break-all; }
+.ev-pre { margin: 0; padding: 6px; border-radius: 4px; background: var(--surface-2); font-family: var(--mono); font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+.ev-scroll { overflow-x: auto; }
+.ev-scroll table { border-collapse: collapse; font-size: 11px; }
+.ev-scroll th, .ev-scroll td { padding: 2px 5px; border: 1px solid var(--line); white-space: nowrap; text-align: left; }
 </style>
 
 <div class="wrap">
@@ -1566,6 +1565,8 @@
           <div class="rgroup-tools">
             <!-- 개발용 구현 — Agent 초안 명시 저장, UI 실구현 단계에서 교체 -->
             <button class="tool-lg" type="button" id="devSaveBtn" data-needdoc><span class="g">▣</span><span class="t">저장</span></button>
+            <!-- 개발용 구현 — 저장 보고서 정합성 검증, 수치별 근거 패널 구현 단계에서 교체 -->
+            <button class="tool-lg" type="button" id="devVerifyBtn" data-needdoc><span class="g">✓</span><span class="t">정합성 검증</span></button>
             <button class="tool-lg" type="button" data-needdoc data-soon><span class="g">⭳</span><span class="t">내보내기<span class="soon">준비중</span></span></button>
           </div>
           <div class="rgroup-label">문서</div>
@@ -1581,6 +1582,8 @@
           <div class="rail-tabs">
             <button class="rail-tab active" type="button" data-railtab="data" title="데이터"><span class="g">▦</span><span class="tl">데이터</span></button>
             <button class="rail-tab" type="button" data-railtab="reports" title="보고서"><span class="g">❏</span><span class="tl">보고서</span></button>
+            <!-- 개발용 구현 — 근거 탭, 저장 보고서 지면의 수치 선택 시 원본 재조회 결과 표시 -->
+            <button class="rail-tab" type="button" data-railtab="evidence" title="근거"><span class="g">⌕</span><span class="tl">근거</span></button>
           </div>
           <span class="rail-actions">
             <button class="iconbtn" id="collapseLeft" type="button" title="접기"><span class="g">⇤</span></button>
@@ -1590,10 +1593,12 @@
         <div class="pages-tools" id="dataTools">
           <button class="pg-add" id="dataAdd" type="button"><span class="g">＋</span><span class="txt">데이터 불러오기</span></button>
         </div>
-        <!-- 데이터 목록 — 카탈로그(data/datasets/index.json) 렌더 소관, 부제는 기간·필터 요약 -->
+        <!-- 데이터 목록 — 계정 조회 범위 테이블(GET /api/datasets) 렌더 소관, 부제는 테이블명·적재 기간, 행 선택 시 레일 안 상세 -->
         <div class="attachments" id="dataList"></div>
         <!-- 보고서 목록 — 저장 보고서(GET /api/reports) 렌더 소관, 보고서 탭 전용 -->
         <div class="attachments rep-list" id="reportList"></div>
+        <!-- 근거 패널 — 수치 근거(GET /api/reports/{id}/evidence) 렌더 소관, 근거 탭 전용 -->
+        <div class="attachments ev-panel" id="evidencePanel"></div>
         <!-- 페이지 툴바·트리 — 탭 없이 화면 미노출, 문서 흐름(setDocPages 등)이 참조하는 요소 -->
         <!-- 페이지 툴바 — 새 페이지 추가 + 썸네일↔목록 토글. 구현 TreeListWidget도 상단 툴바에 추가·보기 컨트롤을 둔다 -->
         <div class="pages-tools" id="pagesTools">
@@ -1781,29 +1786,6 @@
   </div>
 </div>
 
-<!-- 데이터 선택 창 — 표를 고른 뒤 지시를 보내 분석 보고서 생성 -->
-<div class="modal-mask" id="pickMask">
-  <div class="lib" id="pickDlg" style="height:auto;max-height:88vh">
-    <div class="lib-head">
-      <span class="lib-title">데이터로 시작</span>
-      <button class="lib-x" id="pickX" type="button">×</button>
-    </div>
-    <div class="pick-body">
-      <div class="merge-head">
-        <span class="merge-sub">보고서의 근거가 될 표를 고르고, 어떤 문서로 만들지 아래에 적어 주세요.</span>
-        <span class="merge-count" id="pickCount"></span>
-      </div>
-      <div class="pick-list" id="pickList"></div>
-      <div class="pick-prev" id="pickPrev"></div>
-    </div>
-    <div class="pick-foot">
-      <div class="chat-box">
-        <textarea id="pickInput" rows="3" readonly></textarea>
-        <button class="chat-send" id="pickGo" type="button" title="보내기">↑</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- 토스트 — 미구현 동작의 안내 표시 -->
 <div class="toast" id="toast"></div>
@@ -2439,6 +2421,8 @@
       var rlist = document.getElementById('reportList');
       if (rlist) rlist.style.display = key === 'reports' ? 'flex' : 'none';
       if (key === 'reports') refreshReports();
+      var epanel = document.getElementById('evidencePanel');
+      if (epanel) epanel.style.display = key === 'evidence' ? 'flex' : 'none';
       document.getElementById('pages').style.display = key === 'pages' ? 'flex' : 'none';
       // 페이지 툴바(추가·보기 토글)는 페이지 탭 전용
       var ptools = document.getElementById('pagesTools');
@@ -2461,14 +2445,103 @@
     });
     setRailTab('data'); // 진입 시 데이터 탭 우선
 
-    // 데이터 행 선택 — 목록이 카탈로그로 다시 그려지므로 위임 방식
-    var dataListEl = document.getElementById('dataList');
-    if (dataListEl) dataListEl.addEventListener('click', function (ev) {
-      var row = ev.target.closest ? ev.target.closest('.att-row') : null;
-      if (row) markDataRow(row.getAttribute('data-id'));
-    });
     var dataAdd = document.getElementById('dataAdd');
     if (dataAdd) dataAdd.addEventListener('click', function () { showToast('데이터 불러오기 (구현 예정)'); });
+
+    // ── 개발용 구현 — 데이터 탭: 선택 계정 조회 범위 테이블을 분류별로 표시, 행 선택 시 레일 안에 구조·표본 표시
+    var dataListEl = document.getElementById('dataList');
+    var dataSeq = 0;      // 늦게 도착한 이전 요청의 응답 폐기용
+    var dataCatalog = [];
+    var DATA_DOMAINS = ['기준정보', 'MES', 'ERP'];
+    function dataMsg(text) {
+      if (!dataListEl) return;
+      dataListEl.innerHTML = '<div class="rep-msg">' + escStr(text) + '</div>';
+    }
+    function dataDay(v) { return v ? String(v).slice(0, 10) : ''; }
+    function escStr(v) { return escHtml(String(v)); }   // 서버 값(숫자 포함) 이스케이프
+    function acctParam() {
+      var acct = window.AlabAccount ? AlabAccount.current() : null;
+      return 'account=' + encodeURIComponent(acct ? acct.id : '');
+    }
+    function renderDataRail() {
+      if (!dataListEl) return;
+      if (!dataCatalog.length) { dataMsg('조회할 수 있는 데이터가 없습니다'); return; }
+      var groups = {};
+      dataCatalog.forEach(function (d) {
+        var g = d.domain || '미분류';
+        (groups[g] = groups[g] || []).push(d);
+      });
+      var order = DATA_DOMAINS.filter(function (g) { return groups[g]; })
+        .concat(Object.keys(groups).filter(function (g) { return DATA_DOMAINS.indexOf(g) < 0; }));
+      dataListEl.innerHTML = order.map(function (g) {
+        var rows = groups[g].map(function (d) {
+          var sub = d.table + (d.period ? ' · ' + dataDay(d.period.min) + ' ~ ' + dataDay(d.period.max) : '');
+          return '<div class="att-row" data-table="' + escStr(d.table) + '" title="' + escStr(d.description || '') + '"><span class="g">▦</span>' +
+            '<span class="rn two"><span class="rt">' + escStr(d.title || d.table) + '</span>' +
+            '<span class="rsub">' + escStr(sub) + '</span></span></div>';
+        }).join('');
+        return '<div class="att-group"><div class="att-glabel">' + escStr(g) +
+          ' <span class="att-count">' + groups[g].length + '</span></div><div class="att-list">' + rows + '</div></div>';
+      }).join('');
+    }
+    function refreshDatasets() {
+      if (!dataListEl) return;
+      var mine = ++dataSeq;
+      dataMsg('불러오는 중…');
+      AlabApi.getJson('datasets?' + acctParam()).then(function (j) {
+        if (mine !== dataSeq) return;
+        dataCatalog = j.datasets || [];
+        renderDataRail();
+      }, function (err) {
+        if (mine === dataSeq) dataMsg('데이터 목록을 불러오지 못했습니다: ' + err.message);
+      });
+    }
+    // 표본 표 — 서버 값은 텍스트로만 기입
+    function evTable(rows) {
+      if (!rows || !rows.length) return '<div class="ev-sub">표본 없음</div>';
+      var cols = Object.keys(rows[0]);
+      return '<div class="ev-scroll"><table><tr>' + cols.map(function (c) { return '<th>' + escStr(c) + '</th>'; }).join('') + '</tr>' +
+        rows.map(function (r) {
+          return '<tr>' + cols.map(function (c) { return '<td>' + escStr(r[c] === null ? '-' : r[c]) + '</td>'; }).join('') + '</tr>';
+        }).join('') + '</table></div>';
+    }
+    function evKv(pairs) {
+      return '<dl class="ev-kv">' + pairs.filter(function (p) { return p[1] !== null && p[1] !== undefined && p[1] !== ''; }).map(function (p) {
+        return '<dt>' + escStr(p[0]) + '</dt><dd>' + escStr(p[1]) + '</dd>';
+      }).join('') + '</dl>';
+    }
+    function showDataset(table) {
+      if (!dataListEl) return;
+      var mine = ++dataSeq;
+      dataMsg('불러오는 중…');
+      AlabApi.getJson('datasets/' + encodeURIComponent(table) + '?' + acctParam()).then(function (d) {
+        if (mine !== dataSeq) return;
+        var ranges = Object.keys(d.dateRanges || {}).map(function (c) {
+          return [c, dataDay(d.dateRanges[c].min) + ' ~ ' + dataDay(d.dateRanges[c].max)];
+        });
+        dataListEl.innerHTML = '<div class="ds-detail">' +
+          '<div><button type="button" class="rep-act" data-act="back">← 목록</button></div>' +
+          '<div class="ev-sec"><div class="ev-h">' + escStr(d.title || d.table) + '</div><div class="ev-sub">' + escStr(d.table + (d.domain ? ' · ' + d.domain : '')) + '</div>' +
+          (d.description ? '<div>' + escStr(d.description) + '</div>' : '') + '</div>' +
+          '<div class="ev-sec">' + evKv([['행 수', Number(d.rowCount).toLocaleString('ko-KR')]].concat(ranges)) + '</div>' +
+          '<div class="ev-sec"><div class="ev-h">컬럼</div>' + evKv(d.columns.map(function (c) {
+            return [c.name, c.type + (c.primaryKey ? ' · PK' : '') + (c.references ? ' → ' + c.references : '') + (c.description ? ' · ' + c.description : '')];
+          })) + '</div>' +
+          '<div class="ev-sec"><div class="ev-h">표본 ' + d.sample.length + '행</div>' + evTable(d.sample) + '</div>' +
+          '</div>';
+      }, function (err) {
+        if (mine === dataSeq) dataMsg('데이터를 불러오지 못했습니다: ' + err.message);
+      });
+    }
+    if (dataListEl) dataListEl.addEventListener('click', function (ev) {
+      if (ev.target.closest('[data-act="back"]')) { ++dataSeq; renderDataRail(); return; }
+      var row = ev.target.closest('.att-row[data-table]');
+      if (row) showDataset(row.getAttribute('data-table'));
+    });
+    if (window.AlabAccount) {
+      AlabAccount.onChange(refreshDatasets);
+      if (AlabAccount.current()) refreshDatasets();
+    }
 
     // ── 보고서 탭 — 선택 계정의 저장 보고서 목록, 적재는 js/reports.js 소관
     var reportListEl = document.getElementById('reportList');
@@ -2516,6 +2589,15 @@
         });
         row.appendChild(acts);
         reportListEl.appendChild(row);
+      });
+      markOpenReport();
+    }
+    // 열린 보고서 표시 — 저장한 초안 또는 연 저장 보고서의 행 강조
+    function markOpenReport() {
+      if (!reportListEl) return;
+      var id = (lastDraftRef && lastDraftRef.saved && lastDraftRef.saved.id) || (editReport && editReport.id) || null;
+      reportListEl.querySelectorAll('.rep-row').forEach(function (r) {
+        r.classList.toggle('on', id !== null && r.getAttribute('data-id') === String(id));
       });
     }
     function refreshReports() {
@@ -2597,7 +2679,7 @@
     if (window.ResizeObserver && docPage) new ResizeObserver(function () { if (pageBox && pageBox.classList.contains('draft')) applyZoom(); }).observe(docPage);
     function setDraftPage(on) {
       // 개발용 구현 — Agent 초안이 아닌 지면으로 바뀌면 명시 저장 대상 해제
-      if (!on) { lastDraft = null; lastDraftRef = null; }
+      if (!on) { lastDraft = null; lastDraftRef = null; lastDraftRecord = null; editReport = null; markOpenReport(); }
       if (!pageBox) return;
       pageBox.classList.toggle('draft', on);
       if (!on) pageBox.style.height = '';
@@ -2636,8 +2718,7 @@
     document.querySelectorAll('.start-card[data-start]').forEach(function (c) {
       c.addEventListener('click', function () {
         var kind = c.getAttribute('data-start');
-        if (kind === 'data') openPick();
-        else if (kind === 'merge') openMerge();
+        if (kind === 'merge') openMerge();
         else if (kind === 'template') openTpl();
         else if (kind === 'blank') showBlankDoc();
       });
@@ -2751,7 +2832,6 @@
 
     // ── 서식 적재 — 파일 경로 기준 캐시, 어느 흐름에서 골라도 같은 파일을 씀
     var TPL_WEEKLY = 'data/templates/weekly-summary.html';
-    var TPL_BRIEF = 'data/templates/data-brief.html';
     var tplCache = {};
     function loadTemplate(file, cb) {
       if (tplCache[file] !== undefined) { cb(tplCache[file]); return; }
@@ -2761,7 +2841,6 @@
         .catch(function () { tplCache[file] = ''; cb(''); });
     }
     loadTemplate(TPL_WEEKLY, function () {});   // 예열 — 첫 생성에서 대기 없음
-    loadTemplate(TPL_BRIEF, function () {});
 
     // ── 보고서 통합 흐름 — 일일 보고서(JSON) 취합 후 주간 집계서 생성
     var dailyData = null;
@@ -3015,6 +3094,15 @@
     // 개발용 구현 — 최근 초안의 기안 입력·저장 결과(대화 이력 draft 로 전송)와 요청 원문(명시 저장용)
     var lastDraftRef = null;
     var lastDraftRequest = '';
+    var lastDraftRecord = null;   // 개발용 구현 — 저장 시 함께 보내는 기안 기록(수정 재개용)
+    var editReport = null;   // 개발용 구현 — 수정 중인 저장 보고서 {id, docNo, editable, editBlock}, 요청마다 report 로 전송
+    // 개발용 구현 — 수정 불가 사유별 안내 문구
+    var EDIT_BLOCK_MSG = {
+      not_author: '작성 계정에서만 수정할 수 있습니다',
+      no_draft: '이 보고서는 수정에 필요한 기안 기록이 없어 수정할 수 없습니다',
+      not_replayable: '저장된 기안 기록을 현재 데이터로 다시 검증하지 못해 수정할 수 없습니다'
+    };
+    var EDIT_BLOCK_TAG = { not_author: '작성자 아님', no_draft: '기안 기록 없음', not_replayable: '재검증 실패' };
     function showDraft(d, steps) {
       lastDraft = d;
       if (!docOn) showDoc(true);
@@ -3062,11 +3150,14 @@
       var turnDraft = null;   // 개발용 구현 — 이번 턴 초안 기안 입력, 다음 요청의 assistant 이력에 보관
       var answer = '';   // 마지막 도구 호출 이후 본문 — 최종 답변 후보
       var failed = null;
+      var draftFailed = null;   // 작성 모드 최종 실패 안내
+      var draftRow = null;      // 초안 작성 진행 줄 — 재작성 호출이 같은 줄 사용
       var ctrl = agentAbort = new AbortController();
       var body = { messages: turns };
       if (demoUser.id) body.account = demoUser.id;
       var mo = agentOptions(opts);
       Object.keys(mo).forEach(function (k) { body[k] = mo[k]; });
+      if (editReport && editReport.editable) body.report = editReport.id;
       AlabApi.stream('agent', body, function (ev) {
         if (ev.type === 'delta') {
           answer += ev.text;
@@ -3080,16 +3171,33 @@
             steps.appendChild(note);
           }
           answer = '';
-          bubble.textContent = '조회 중…';
-          var row = document.createElement('div');
-          row.className = 'chat-step';
-          row.textContent = stepText(ev);
-          stepEls[ev.id] = row;
-          stepInputs[ev.id] = ev.input || {};
-          steps.appendChild(row);
+          // 초안 작성 — 서식 틀 선표시, 재작성 호출은 같은 진행 줄 재사용
+          if (ev.name === 'draft_report') {
+            bubble.textContent = '작성 중…';
+            if (ev.input && typeof ev.input.template === 'string') showTplSkeleton(ev.input.template);
+            if (!draftRow) {
+              draftRow = document.createElement('div');
+              draftRow.className = 'chat-step';
+              steps.appendChild(draftRow);
+            }
+            draftRow.textContent = '· 초안 작성';
+            stepEls[ev.id] = draftRow;
+            stepInputs[ev.id] = ev.input || {};
+          } else {
+            bubble.textContent = '조회 중…';
+            var row = document.createElement('div');
+            row.className = 'chat-step';
+            row.textContent = stepText(ev);
+            stepEls[ev.id] = row;
+            stepInputs[ev.id] = ev.input || {};
+            steps.appendChild(row);
+          }
         } else if (ev.type === 'tool_result') {
           var el = stepEls[ev.id];
-          if (el) {
+          // 초안 검증 실패 후 재작성은 미표시 — 성공만 표시
+          if (ev.name === 'draft_report') {
+            if (el && ev.ok) el.textContent += resultText(ev, stepInputs[ev.id] || {});
+          } else if (el) {
             el.textContent += resultText(ev, stepInputs[ev.id] || {});
             if (!ev.ok) el.classList.add('err');
           }
@@ -3102,11 +3210,8 @@
             steps.appendChild(cut);
           }
           answer = '';
+          // 재작성 지시는 사용자에게 진행 줄로 노출하지 않음
           bubble.textContent = '작성 중…';
-          var rt = document.createElement('div');
-          rt.className = 'chat-step';
-          rt.textContent = ev.reason === 'draft_missing' ? '· 초안 작성을 다시 요청하는 중' : '· 응답이 길어 다시 작성 중';
-          steps.appendChild(rt);
         } else if (ev.type === 'plan') {
           // 개발용 구현 — 조회 계획 한 줄 표시
           var pl = document.createElement('div');
@@ -3120,11 +3225,13 @@
           }), function (it, done) {
             if (agentAbort) return;
             done();
+            showTplSkeleton(it.id);
             sendAgentChat(it.name + ' 서식으로 작성해 주세요', { mode: 'draft', template: it.id });
           });
         } else if (ev.type === 'draft') {
           showDraft(ev, steps);
           turnDraft = lastDraftRef = { input: ev.input };
+          lastDraftRecord = ev.record || null;
           lastDraftRequest = text;
         } else if (ev.type === 'saved') {
           if (lastDraftRef) lastDraftRef.saved = { id: ev.id, docNo: ev.docNo };
@@ -3132,10 +3239,29 @@
         } else if (ev.type === 'done') {
           if (ev.sources && ev.sources.length) src.textContent = '출처 ' + ev.sources.join(' · ');
           turnQueries = (ev.queries || []).filter(function (q) { return JSON.stringify(q.input).length <= AGENT_MAX_QUERY_INPUT; });
-        } else if (ev.type === 'error') failed = ev.error;
+        } else if (ev.type === 'error' && ev.code === 'draft_failed') {
+          // 작성 최종 실패 — 턴 실패로 처리하지 않고 답변·이력 보존, 안내는 1회
+          draftFailed = ev.error;
+        } else if (ev.type === 'error') {
+          failed = ev.error;
+          // 개발용 구현 — 연 뒤 수정 불가로 판정된 저장본은 섹션 수정·갱신 대상에서 해제
+          if (ev.code === 'report_not_editable' && editReport) { editReport.editable = false; editReport.editBlock = 'not_replayable'; }
+        }
         chatLogEl.scrollTop = chatLogEl.scrollHeight;
       }, ctrl.signal).then(function () {
-        if (failed || !answer) throw new Error(failed || '응답이 비어 있습니다.');
+        if (failed || (!answer && !draftFailed)) throw new Error(failed || '응답이 비어 있습니다.');
+        if (draftFailed) {
+          if (answer) {
+            var fl = document.createElement('div');
+            fl.className = 'chat-step err';
+            fl.textContent = '⚠ ' + draftFailed;
+            steps.appendChild(fl);
+          } else {
+            bubble.classList.add('err');
+            bubble.textContent = '⚠ ' + draftFailed;
+            answer = draftFailed;
+          }
+        }
         // 긴 답변은 이력에 앞부분만 보관 — 서버 발화 길이 한도 초과로 다음 요청이 거부되지 않게
         var kept = answer.length > AGENT_MAX_CHARS ? answer.slice(0, AGENT_MAX_CHARS - 1) + '…' : answer;
         var reply = { role: 'assistant', content: kept };
@@ -3179,6 +3305,7 @@
     // 개발용 구현 — 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
     function showSavedPage(id, docNo) {
       refreshReportsIfOpen();   // 저장 직후 좌측 레일 보고서 목록에 반영
+      markOpenReport();
       var acct = window.AlabAccount && AlabAccount.current();
       AlabApi.getJson('reports/' + encodeURIComponent(id) + '?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
         if (j.html && docPage) docPage.innerHTML = j.html;
@@ -3195,13 +3322,33 @@
       var ref = lastDraftRef;
       var body = { templateId: d.template.id, title: d.title, periodFrom: d.period.from, periodTo: d.period.to, requestText: lastDraftRequest, fills: d.fills, numbers: d.numbers };
       if (demoUser.id) body.account = demoUser.id;
+      if (lastDraftRecord) body.draft = lastDraftRecord;
+      // 저장본 수정 중이면 같은 보고서 갱신
       if (ref.saved) body.id = ref.saved.id;
+      else if (editReport && editReport.editable) body.id = editReport.id;
       devSaveBtn.disabled = true;
       AlabApi.postJson('reports', body).then(function (j) {
         ref.saved = { id: j.report.id, docNo: j.report.docNo };
         showSavedPage(j.report.id, j.report.docNo);
       }).catch(function (err) { showToast('저장하지 못했습니다: ' + err.message); })
         .then(function () { devSaveBtn.disabled = false; });
+    });
+    // 개발용 구현 — 저장 보고서 수치를 출처 조회 재실행 결과와 대조, 요약과 불일치 항목을 토스트로 표시
+    var devVerifyBtn = document.getElementById('devVerifyBtn');
+    if (devVerifyBtn) devVerifyBtn.addEventListener('click', function () {
+      if (devVerifyBtn.disabled) return;
+      var id = editReport ? editReport.id : (lastDraftRef && lastDraftRef.saved ? lastDraftRef.saved.id : null);
+      if (!id) { showToast('검증할 저장 보고서가 없습니다'); return; }
+      var acct = AlabAccount.current();
+      devVerifyBtn.disabled = true;
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '/verify?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
+        var s = j.summary;
+        var bad = j.numbers.filter(function (n) { return n.status !== 'match'; }).slice(0, 3).map(function (n) {
+          return (n.label || n.key) + ' ' + n.status + (n.current ? ' (저장 ' + n.stored.value + ' · 원본 ' + n.current.value + ')' : n.reason ? ' (' + n.reason + ')' : '');
+        });
+        showToast('정합성 검증 · 일치 ' + s.match + '/' + s.total + (s.rate === null ? '' : ' (' + Math.round(s.rate * 1000) / 10 + '%)') + (bad.length ? ' · ' + bad.join(' / ') : ''));
+      }).catch(function (err) { showToast('검증하지 못했습니다: ' + err.message); })
+        .then(function () { devVerifyBtn.disabled = false; });
     });
     // 저장 보고서 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 탭 「열기」와 주소 직접 진입 공용
     function openSavedReport() {
@@ -3215,14 +3362,137 @@
         if (!docOn) showDoc(true);
         docPage.innerHTML = j.html;
         setDraftPage(true);
-        lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 명시 저장 대상 아님
+        lastDraft = null;   // 개발용 구현 — 열어 본 저장본은 수정 전까지 명시 저장 대상 아님
         lastDraftRef = null;
+        lastDraftRecord = null;
+        editReport = { id: j.report.id, docNo: j.report.docNo, editable: !!j.report.editable, editBlock: j.report.editBlock || null };
+        markOpenReport();
+        agentHistory = [];
         applyZoom();
         if (docnameEl) docnameEl.textContent = j.report.title;
         setDocPages([j.report.title]);
-        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo);
+        showToast('저장된 보고서를 열었습니다 · ' + j.report.docNo + (j.report.editable ? '' : ' (수정 불가' + (EDIT_BLOCK_TAG[j.report.editBlock] ? ' · ' + EDIT_BLOCK_TAG[j.report.editBlock] : '') + ')'));
       }).catch(function (err) { showToast('보고서를 불러오지 못했습니다: ' + err.message); });
     }
+    // 개발용 구현 — 지면 섹션(data-key) 선택 시 아래에 수정 요청 입력창 표시, 보내면 해당 키만 수정하도록 요청
+    if (docPage) docPage.addEventListener('click', function (ev) {
+      var sec = ev.target.closest && ev.target.closest('.rpt-key[data-key]');
+      if (!sec || ev.target.closest('.dev-sec-box')) return;
+      if (!lastDraftRef && !(editReport && editReport.editable)) {
+        showToast(editReport ? (EDIT_BLOCK_MSG[editReport.editBlock] || EDIT_BLOCK_MSG.no_draft) : '수정할 Agent 초안이 없습니다');
+        return;
+      }
+      var old = docPage.querySelector('.dev-sec-box');
+      if (old) old.remove();
+      var key = sec.getAttribute('data-key');
+      var label = sec.getAttribute('data-label') || key;
+      var boxEl = document.createElement('div');
+      boxEl.className = 'dev-sec-box';
+      boxEl.style.cssText = 'margin:6px 0;padding:6px;border:1px dashed #888;font-size:12px';
+      boxEl.innerHTML = '<div>「' + escHtml(label) + '」 섹션 수정 요청</div><textarea rows="2" style="width:100%"></textarea><button type="button" data-act="send">수정 요청</button> <button type="button" data-act="close">닫기</button>';
+      // 인라인 섹션(제목·표 칸)은 감싼 제목·표 뒤에 표시
+      var anchor = sec.tagName === 'SPAN' ? (sec.closest('h1, h2, h3, table') || sec) : sec;
+      anchor.insertAdjacentElement('afterend', boxEl);
+      var ta = boxEl.querySelector('textarea');
+      ta.focus();
+      boxEl.addEventListener('click', function (e) {
+        var act = e.target.getAttribute && e.target.getAttribute('data-act');
+        if (act === 'close') boxEl.remove();
+        if (act !== 'send' || !ta.value.trim() || agentAbort) return;
+        var msg = '「' + label + '」 섹션 수정: ' + ta.value.trim();
+        boxEl.remove();
+        sendAgentChat(msg, { mode: 'draft', section: key });
+      });
+    });
+    // ── 개발용 구현 — 근거 탭: 지면 수치(data-num) 선택 시 출처 조회를 작성 계정 권한으로 재실행한 결과·조회 조건·원천 테이블 표시
+    var evidencePanel = document.getElementById('evidencePanel');
+    var evidenceSeq = 0;
+    var EV_STATUS = { match: '원본 일치', mismatch: '원본 불일치', missing: '원본 확인 불가', no_source: '출처 기록 없음' };
+    function evMsg(text) {
+      if (evidencePanel) evidencePanel.innerHTML = '<div class="rep-msg">' + escStr(text) + '</div>';
+    }
+    evMsg('저장 보고서 지면의 수치를 누르면 근거가 여기에 표시됩니다');
+    function evNum(v, unit) {
+      if (v === null || v === undefined) return '-';
+      return Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 6 }) + (unit ? ' ' + unit : '');
+    }
+    function evInput(input) {
+      if (!input || typeof input !== 'object') return [];
+      return Object.keys(input).map(function (k) {
+        var v = input[k];
+        return [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)];
+      });
+    }
+    // 지면 표시 수치의 저장 보고서 — 초안이 떠 있으면 그 초안의 저장본만, 아니면 연 저장 보고서
+    function shownReportId() {
+      if (lastDraftRef) return lastDraftRef.saved ? lastDraftRef.saved.id : null;
+      return editReport ? editReport.id : null;
+    }
+    function openRailTab(key) {
+      if (app.classList.contains('left-collapsed')) railExpand(railLast);
+      setRailTab(key);
+    }
+    function renderEvidence(j, section) {
+      var n = j.number, s = j.source;
+      // 서술 안 수치는 항목 이름이 없어 섹션 이름으로 표시
+      var html = '<div class="ev-sec"><div class="ev-h">' + escStr(n.label || (section ? section + ' 본문 수치' : n.key)) +
+        '<span class="ev-badge ' + escStr(n.status) + '">' + escStr(EV_STATUS[n.status] || n.status) + '</span></div>' +
+        '<div class="ev-sub">' + escStr(j.report.docNo + ' · ' + n.key) + '</div></div>';
+      var vals = [['저장 값', evNum(n.stored.value, n.unit)], ['원본 값', n.current ? evNum(n.current.value, n.unit) : null]];
+      if (n.stored.numerator !== null) vals.push(['저장 분자/분모', evNum(n.stored.numerator) + ' / ' + evNum(n.stored.denominator)]);
+      if (n.current && n.current.numerator !== null) vals.push(['원본 분자/분모', evNum(n.current.numerator) + ' / ' + evNum(n.current.denominator)]);
+      if (n.reason) vals.push(['사유', n.reason]);
+      html += '<div class="ev-sec">' + evKv(vals) + '</div>';
+      if (s) {
+        html += '<div class="ev-sec"><div class="ev-h">출처 조회</div>' +
+          evKv([['조회', s.title], ['도구', TOOL_LABELS[s.tool] ? TOOL_LABELS[s.tool] + ' (' + s.tool + ')' : s.tool], ['산식', s.formula], ['값 경로', n.path], ['조회 ID', n.queryId]]) + '</div>';
+        var cond = evInput(s.input).filter(function (p) { return !(s.sql && p[0] === 'sql'); });
+        if (cond.length) html += '<div class="ev-sec"><div class="ev-h">조회 조건</div>' + evKv(cond) + '</div>';
+        if (s.sql) html += '<div class="ev-sec"><div class="ev-h">SQL</div><pre class="ev-pre">' + escStr(s.sql) + '</pre></div>';
+        if (s.row) html += '<div class="ev-sec"><div class="ev-h">원본 행</div>' + evKv(Object.keys(s.row).map(function (k) { return [k, s.row[k] === null ? '-' : String(s.row[k])]; })) + '</div>';
+        if (s.tables.length) html += '<div class="ev-sec"><div class="ev-h">원천 테이블</div><div class="rep-acts" style="flex-wrap:wrap">' +
+          s.tables.map(function (t) {
+            return '<button type="button" class="rep-act" data-table="' + escStr(t.table) + '">' + escStr((t.title ? t.title + ' · ' : '') + t.table) + '</button>';
+          }).join('') + '</div></div>';
+      }
+      evidencePanel.innerHTML = html;
+    }
+    function showEvidence(id, key, section) {
+      if (!evidencePanel) return;
+      var mine = ++evidenceSeq;
+      evMsg('원본을 다시 조회하는 중…');
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '/evidence?' + acctParam() + '&key=' + encodeURIComponent(key)).then(function (j) {
+        if (mine === evidenceSeq) renderEvidence(j, section);
+      }, function (err) {
+        if (mine === evidenceSeq) evMsg('근거를 불러오지 못했습니다: ' + err.message);
+      });
+    }
+    // 수치 선택 — 캡처 단계에서 받아 섹션 수정 입력창보다 우선
+    if (docPage) docPage.addEventListener('click', function (ev) {
+      var num = ev.target.closest && ev.target.closest('.rpt-num[data-num]');
+      if (!num || ev.target.closest('.dev-sec-box')) return;
+      ev.stopPropagation();
+      var id = shownReportId();
+      if (!id) { showToast('저장 보고서에서만 근거를 볼 수 있습니다'); return; }
+      docPage.querySelectorAll('.rpt-num.on').forEach(function (x) { x.classList.remove('on'); });
+      num.classList.add('on');
+      openRailTab('evidence');
+      var sec = num.closest('.rpt-key[data-label]');
+      showEvidence(id, num.getAttribute('data-num'), sec ? sec.getAttribute('data-label') : '');
+    }, true);
+    // 원천 테이블 — 데이터 탭 상세로 이동
+    if (evidencePanel) evidencePanel.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-table]');
+      if (!b) return;
+      openRailTab('data');
+      showDataset(b.getAttribute('data-table'));
+    });
+    // 계정 전환 — 이전 계정 기준 근거는 폐기
+    if (window.AlabAccount) AlabAccount.onChange(function () {
+      ++evidenceSeq;
+      evMsg('저장 보고서 지면의 수치를 누르면 근거가 여기에 표시됩니다');
+    });
+
     // 드로어 전송 — 시작 화면에선 「대화로 시작」과 같은 경로로 빈 지면부터 염
     function sendDrawer() {
       if (docOn || !chatInputEl) return sendAgentChat();
@@ -3311,304 +3581,6 @@
     if (mergeGo) mergeGo.addEventListener('click', runMerge);
     bindMaskClose(mergeMask, closeMerge);
 
-    // ── 데이터로 시작 흐름 — 카탈로그의 표를 골라 분석 보고서 생성
-    var dataCatalog = [];
-    var dataCache = {};   // id → 표 본문, 재선택 시 재요청 방지
-    var pickedId = '';
-
-    fetch('data/datasets/index.json')
-      .then(function (r) { return r.json(); })
-      .then(function (j) { dataCatalog = j.datasets || []; renderDataRail(); })
-      .catch(function () { dataCatalog = []; });
-
-    // 좌측 레일 데이터 목록 — 카탈로그를 원천 시스템별로 묶어 렌더
-    function renderDataRail() {
-      var list = document.getElementById('dataList');
-      if (!list) return;
-      var order = [], bySys = {};
-      dataCatalog.forEach(function (d) {
-        if (!bySys[d.system]) { bySys[d.system] = []; order.push(d.system); }
-        bySys[d.system].push(d);
-      });
-      list.innerHTML = order.map(function (sys) {
-        var rows = bySys[sys].map(function (d) {
-          return '<div class="att-row" data-id="' + d.id + '"><span class="g">▦</span>' +
-            '<span class="rn two"><span class="rt">' + d.name + '</span>' +
-            '<span class="rsub">' + d.summary + '</span></span></div>';
-        }).join('');
-        return '<div class="att-group"><div class="att-glabel">' + sys +
-          ' <span class="att-count">' + bySys[sys].length + '</span></div>' +
-          '<div class="att-list">' + rows + '</div></div>';
-      }).join('');
-      markDataRow(pickedId || (dataCatalog[0] ? dataCatalog[0].id : ''));
-    }
-
-    // 선택 표시 — 레일 목록과 선택 창이 같은 id 를 공유
-    function markDataRow(id) {
-      if (!id) return;
-      pickedId = id;
-      document.querySelectorAll('#dataList .att-row').forEach(function (r) {
-        r.classList.toggle('active', r.getAttribute('data-id') === id);
-      });
-      document.querySelectorAll('#pickList .pick-row').forEach(function (r) {
-        r.classList.toggle('active', r.getAttribute('data-id') === id);
-      });
-    }
-
-    function catalogOf(id) {
-      var hit = null;
-      dataCatalog.forEach(function (d) { if (d.id === id) hit = d; });
-      return hit;
-    }
-
-    // 표 본문 적재 — 캐시 우선, 없으면 카탈로그의 파일 경로로 요청
-    function loadDataset(id, cb) {
-      if (dataCache[id]) { cb(dataCache[id]); return; }
-      var meta = catalogOf(id);
-      if (!meta) { cb(null); return; }
-      fetch(meta.file)
-        .then(function (r) { return r.json(); })
-        .then(function (j) { dataCache[id] = j; cb(j); })
-        .catch(function () { cb(null); });
-    }
-
-    // ── 집계 엔진 — 표 파일의 group_by·sum·derived 메타만 보고 지표와 집계표를 산출
-    function sumOf(rows, key) {
-      var t = 0;
-      rows.forEach(function (r) { t += Number(r[key] || 0); });
-      return t;
-    }
-    function groupsOf(ds) {
-      var order = [], by = {};
-      ds.rows.forEach(function (r) {
-        var k = r[ds.group_by];
-        if (!by[k]) { by[k] = []; order.push(k); }
-        by[k].push(r);
-      });
-      return order.map(function (k) { return { key: k, rows: by[k] }; });
-    }
-    // 지표 산출 — sum(합) · diff(차) · ratio(비율) · groups(그룹 수) · rows(행 수)
-    function metricOf(rows, m, ds) {
-      if (m.kind === 'sum') return { v: sumOf(rows, m.key), dec: 0 };
-      if (m.kind === 'diff') {
-        var p = 0, q = 0;
-        (m.plus || []).forEach(function (k) { p += sumOf(rows, k); });
-        (m.minus || []).forEach(function (k) { q += sumOf(rows, k); });
-        return { v: p - q, dec: 0 };
-      }
-      if (m.kind === 'ratio') {
-        var n = sumOf(rows, m.num), d = 0;
-        (m.den || []).forEach(function (k) { d += sumOf(rows, k); });
-        return { v: d > 0 ? (n / d) * (m.scale || 1) : 0, dec: m.dec || 0 };
-      }
-      if (m.kind === 'groups') {
-        var seen = {}, c = 0;
-        rows.forEach(function (r) { var k = r[ds.group_by]; if (!seen[k]) { seen[k] = 1; c += 1; } });
-        return { v: c, dec: 0 };
-      }
-      if (m.kind === 'rows') return { v: rows.length, dec: 0 };
-      return { v: 0, dec: 0 };
-    }
-    function fmtMetric(x) { return x.dec > 0 ? Number(x.v).toFixed(x.dec) : nf(Math.round(x.v)); }
-    function labelOf(ds, key) {
-      var hit = key;
-      ds.fields.forEach(function (f) { if (f.key === key) hit = f.label; });
-      return hit;
-    }
-
-    // 파생 지표 최저 그룹 — 특이 항목 머리줄과 대화 요약의 공통 근거
-    function worstGroup(ds) {
-      var groups = groupsOf(ds);
-      if (!ds.derived.length || groups.length < 2) return null;
-      var d0 = ds.derived[0], lo = null;
-      groups.forEach(function (g) {
-        var v = metricOf(g.rows, d0, ds);
-        if (!lo || v.v < lo.v.v) lo = { key: g.key, v: v };
-      });
-      return { key: lo.key, metric: d0, text: fmtMetric(lo.v) + (d0.unit || '') };
-    }
-
-    // 분석 보고서 데이터 — data-brief 서식의 플레이스홀더에 대응
-    function briefDocData(ds) {
-      var groups = groupsOf(ds);
-      var axis = ds.fields[0].key;                              // 첫 열이 시간 축 — 특이 항목 표기에 사용
-      var unit = (ds.doc.group_title || '').replace(/별$/, '');
-
-      var kpiHead = '', kpiBody = '';
-      ds.headline.forEach(function (m) {
-        kpiHead += '<th>' + m.label + '</th>';
-        kpiBody += '<td' + (m.tone ? ' class="' + m.tone + '"' : '') + '>' +
-          fmtMetric(metricOf(ds.rows, m, ds)) + '<span class="u">' + (m.unit || '') + '</span></td>';
-      });
-
-      // 집계표 열 = 그룹 축 + 합산 열 + 파생 열, 단위는 머리행에만 표기
-      var head = '<th>' + (unit || '구분') + '</th>';
-      ds.sum.forEach(function (k) { head += '<th>' + labelOf(ds, k) + '</th>'; });
-      ds.derived.forEach(function (d) { head += '<th>' + d.label + (d.unit ? '(' + d.unit + ')' : '') + '</th>'; });
-
-      var body = '';
-      groups.forEach(function (g) {
-        body += '<tr><td class="c">' + g.key + '</td>';
-        ds.sum.forEach(function (k) { body += '<td class="n">' + nf(sumOf(g.rows, k)) + '</td>'; });
-        ds.derived.forEach(function (d) { body += '<td class="' + (d.align || 'c') + '">' + fmtMetric(metricOf(g.rows, d, ds)) + '</td>'; });
-        body += '</tr>';
-      });
-      body += '<tr class="sum"><td class="c">합계</td>';
-      ds.sum.forEach(function (k) { body += '<td class="n">' + nf(sumOf(ds.rows, k)) + '</td>'; });
-      ds.derived.forEach(function (d) { body += '<td class="' + (d.align || 'c') + '">' + fmtMetric(metricOf(ds.rows, d, ds)) + '</td>'; });
-      body += '</tr>';
-
-      // 특이 항목 — 파생 지표 최저 그룹을 머리 항목으로, 이어서 행 비고를 시간 축과 함께 나열
-      var obs = '', worst = worstGroup(ds);
-      if (worst) {
-        // 전체 대비 비교는 비율 지표에서만 성립 — 합·차 지표는 그룹 최저만 표기
-        var whole = worst.metric.kind === 'ratio'
-          ? ' (전체 평균 ' + fmtMetric(metricOf(ds.rows, worst.metric, ds)) + (worst.metric.unit || '') + ')'
-          : '';
-        obs += '<li class="lead">' + worst.key + ' — ' + worst.metric.label + ' ' + worst.text +
-          '로 ' + (unit || '그룹') + ' 중 최저' + whole + '</li>';
-      }
-      ds.rows.forEach(function (r) {
-        if (!r.note || r.note.trim() === '') return;
-        obs += '<li><span class="when">' + r[axis] + ' · ' + r[ds.group_by] + '</span>' + r.note + '</li>';
-      });
-      if (!obs) obs = '<li>확인된 특이 항목 없음</li>';
-
-      var doc = ds.doc, p = ds.period, t = p.to.split('-');
-      return {
-        doc_title: doc.title,
-        period_label: p.label,
-        period_from: p.from,
-        period_to: p.to,
-        writer_short: demoUser.name,
-        reviewer: demoUser.reviewer,
-        doc_no: doc.no_prefix + '-' + p.to.replace(/-/g, '') + '-01',
-        issued_at: p.to,
-        dept: demoUser.dept,
-        writer: demoUser.name,
-        audience: demoAudience,
-        src_system: ds.system,
-        src_name: ds.name,
-        src_table: ds.table,
-        src_filter: ds.filter,
-        src_scale: '원천 ' + nf(ds.row_count) + '행 → 추출 ' + nf(ds.rows.length) + '행 (' + (unit || '그룹') + ' ' + groups.length + ')',
-        group_title: doc.group_title,
-        kpi_head: kpiHead,
-        kpi_body: kpiBody,
-        tbl_head: head,
-        tbl_body: body,
-        observations: obs,
-        sign_date: t[0] + '. ' + t[1] + '. ' + t[2] + '.'
-      };
-    }
-
-    var pickMask = document.getElementById('pickMask');
-    var pickListEl = document.getElementById('pickList');
-    var pickPrevEl = document.getElementById('pickPrev');
-    var pickInput = document.getElementById('pickInput');
-    var pickCountEl = document.getElementById('pickCount');
-
-    function renderPickList() {
-      if (!pickListEl) return;
-      pickListEl.innerHTML = dataCatalog.map(function (d) {
-        return '<div class="pick-row" data-id="' + d.id + '">' +
-          '<span class="pk-sys">' + d.system + '</span>' +
-          '<span class="pk-nm">' + d.name + '</span>' +
-          '<span class="pk-sub">' + d.summary + '</span></div>';
-      }).join('');
-      if (pickCountEl) pickCountEl.textContent = dataCatalog.length + '개 표';
-    }
-    if (pickListEl) pickListEl.addEventListener('click', function (ev) {
-      var row = ev.target.closest ? ev.target.closest('.pick-row') : null;
-      if (row) selectPick(row.getAttribute('data-id'));
-    });
-
-    // 미리보기 — 앞 5열·앞 3행만, 전체 규모는 머리글 수치 소관
-    function renderPickPrev(ds) {
-      if (!pickPrevEl) return;
-      if (!ds) {
-        pickPrevEl.innerHTML = '<div class="pv-h"><span class="t">미리보기</span><span class="s">불러오지 못함</span></div>';
-        return;
-      }
-      var cols = ds.fields.slice(0, 5);
-      var head = cols.map(function (f) { return '<th' + (f.align === 'n' ? ' class="n"' : '') + '>' + f.label + '</th>'; }).join('');
-      var body = ds.rows.slice(0, 3).map(function (r) {
-        return '<tr>' + cols.map(function (f) {
-          return '<td' + (f.align === 'n' ? ' class="n"' : '') + '>' + (f.align === 'n' ? nf(r[f.key]) : r[f.key]) + '</td>';
-        }).join('') + '</tr>';
-      }).join('');
-      pickPrevEl.innerHTML = '<div class="pv-h"><span class="t">' + ds.table + '</span>' +
-        '<span class="s">원천 ' + nf(ds.row_count) + '행 · 추출 ' + nf(ds.rows.length) + '행 중 3행 표시</span></div>' +
-        '<div class="pv-scroll"><table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table></div>';
-    }
-
-    function selectPick(id) {
-      markDataRow(id);
-      var meta = catalogOf(id);
-      // 지시문은 표별 문구(demo.ask) + 공통 마무리 — 문구 자체는 편집 불가
-      if (pickInput && meta) pickInput.value = '「' + meta.name + '」 데이터를 분석해서 보고용 문서로 정리해 줘.' + askTail();
-      loadDataset(id, function (ds) {
-        if (pickedId !== id) return;
-        if (pickInput && ds && ds.demo) pickInput.value = ds.demo.ask + askTail();
-        renderPickPrev(ds);
-      });
-    }
-
-    function openPick() {
-      if (!dataCatalog.length) { showToast('데이터 목록을 불러오지 못했습니다'); return; }
-      renderPickList();
-      selectPick(pickedId || dataCatalog[0].id);
-      if (pickMask) pickMask.classList.add('open');
-    }
-    function closePick() { if (pickMask) pickMask.classList.remove('open'); }
-
-    // 분석 보고서 생성 — 데이터 창과 서식 추천 창의 공통 산출 경로
-    function makeBriefDoc(ds, done) {
-      loadTemplate(TPL_BRIEF, function (tpl) {
-        if (!tpl) { showToast('보고서 서식을 불러오지 못했습니다'); return; }
-        docPage.innerHTML = bindTpl(tpl, briefDocData(ds));
-        setDraftPage(false);
-        showDoc(true);
-        applyZoom();
-        setDocPages([ds.doc.title]);
-        if (docnameEl) docnameEl.textContent = ds.doc.name;
-        markDataRow(ds.id);
-        done();
-      });
-    }
-    // 분석 결과 요약 — 수치와 배치 근거 두 문장
-    function briefChat(ds) {
-      // 요약 지표 — 합계 둘에 비율 하나를 더해 규모와 수준을 같이 보임
-      var picks = ds.headline.slice(0, 2), ratio = null;
-      ds.headline.forEach(function (m) { if (!ratio && m.kind === 'ratio') ratio = m; });
-      if (ratio || ds.headline[2]) picks.push(ratio || ds.headline[2]);
-      var brief = picks.map(function (m) {
-        return m.label + ' ' + fmtMetric(metricOf(ds.rows, m, ds)) + (m.unit || '');
-      }).join(', ');
-      var axis = (ds.doc.group_title || '').replace(/별$/, '');
-      var worst = worstGroup(ds);
-      return brief + (worst ? '이며 ' + axis + ' 기준 최저는 ' + worst.key + '(' + worst.text + ')입니다. ' : '입니다. ') +
-        '보고 대상이 ' + demoAudience + '이라 핵심 지표를 앞에, ' + axis + '별 집계와 특이 항목을 뒤에 뒀고 기안자는 계정 정보인 ' + josaRo(signer()) + ' 넣었습니다.';
-    }
-
-    function runPick() {
-      var ds = dataCache[pickedId];
-      if (!ds) { showToast('데이터를 불러오는 중입니다'); return; }
-      var ask = pickInput ? pickInput.value.trim() : '';
-      var axis = (ds.doc.group_title || '').replace(/별$/, '');
-      makeBriefDoc(ds, function () {
-        if (ask) pushChat(ask, true);
-        pushChat(ds.system + ' 「' + ds.name + '」 ' + nf(ds.row_count) + '행에서 ' + nf(ds.rows.length) + '행을 추출해 ' + axis + '별로 집계했습니다. ' + briefChat(ds));
-        closePick();
-      });
-    }
-
-    var pickX = document.getElementById('pickX');
-    if (pickX) pickX.addEventListener('click', closePick);
-    var pickGo = document.getElementById('pickGo');
-    if (pickGo) pickGo.addEventListener('click', runPick);
-    bindMaskClose(pickMask, closePick);
-
     // ── 템플릿으로 시작 흐름 — 요청을 적고 서식을 고르면 빈 문서를 열고 요청을 Agent에 전달
     var tplCatalog = [];
 
@@ -3684,6 +3656,7 @@
       showBlankDoc();
       if (docnameEl) docnameEl.textContent = t.name;
       setDocPages([t.name]);
+      showTplSkeleton(t.id);
       sendAgentChat(ask, { mode: 'draft', template: t.id });
     }
 
@@ -3703,11 +3676,31 @@
     // ── 대화로 시작 흐름 — 빈 지면으로 전환한 뒤 요청을 Agent에 전달
     // 빈 지면 — 작성 단계 진입 즉시 띄우는 임시 문서, 기안 결과가 이 지면을 채움
     function showBlankDoc() {
+      skeletonId = null;
+      ++skeletonSeq;
       if (docPage) docPage.innerHTML = '';
       showDoc(true);
       applyZoom();
       setDocPages(['빈 문서']);
       if (docnameEl) docnameEl.textContent = baseDocName;
+    }
+
+    // 개발용 구현 — 서식 틀 선표시: 초안 도착 전 고른 서식의 빈 틀, 초안·수정 중 저장본이 있으면 미표시
+    var skeletonSeq = 0;
+    var skeletonId = null;
+    function showTplSkeleton(id) {
+      if (!id || id === skeletonId || lastDraft || editReport || !docPage) return;
+      var mine = ++skeletonSeq;
+      skeletonId = id;
+      AlabApi.getJson('templates/' + encodeURIComponent(id) + '/preview?' + acctParam()).then(function (j) {
+        if (mine !== skeletonSeq || lastDraft || editReport) return;
+        if (!docOn) showDoc(true);
+        docPage.innerHTML = j.html;
+        setDraftPage(true);
+        applyZoom();
+        if (docnameEl) docnameEl.textContent = j.template.name;
+        setDocPages([j.template.name]);
+      }, function () { if (mine === skeletonSeq) skeletonId = null; });
     }
 
     // 대화 시작 — 빈 입력·길이 초과는 전송하지 않음, 전송했으면 true

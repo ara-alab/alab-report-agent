@@ -8,7 +8,8 @@ export type KeyKind = "meta" | "value" | "text" | "stats" | "table" | "list";
 // 키 채움 주체 — 시스템 발급, 계정 설정, 조회 결과 참조, LLM 서술
 export type KeySource = "system" | "account" | "query" | "llm";
 
-export type KeySpec = { kind: KeyKind; by: KeySource; label: string; required: boolean };
+// guide — 키별 작성 방법, 서식 데이터에만 기재
+export type KeySpec = { kind: KeyKind; by: KeySource; label: string; required: boolean; guide?: string };
 
 export type TemplateDef = {
   id: string;
@@ -40,6 +41,7 @@ function checkKeys(owner: string, keys: Record<string, KeySpec>) {
   for (const [k, s] of Object.entries(keys)) {
     if (!/^[a-z][a-z0-9_]*$/.test(k)) throw new Error(`${owner}: 키 이름이 올바르지 않습니다: ${k}`);
     if (!KINDS.has(s.kind) || !SOURCES.has(s.by)) throw new Error(`${owner}: 키 선언이 올바르지 않습니다: ${k}`);
+    if (s.guide !== undefined && (typeof s.guide !== "string" || s.guide.length > 200)) throw new Error(`${owner}: 작성 방법이 올바르지 않습니다: ${k}`);
   }
 }
 

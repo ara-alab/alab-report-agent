@@ -5,7 +5,7 @@ import type { ReportNumber } from "@/lib/reports";
 import { parseFills } from "./fills";
 import { accountFills, systemFills } from "./meta";
 import { RefError, bareNumbers, inlineRefs, knownLabels, resolveArray, resolveRef, walk, type Resolved, type RunCache } from "./refs";
-import { fillIssues, formatNumber, renderTemplate, type Align, type Cell, type Fill, type Fills, type Tone } from "./render";
+import { fillIssues, formatNumber, renderTemplate, type Align, type Cell, type Fill, type Fills, type NumMark, type Tone } from "./render";
 import { getTemplate, listTemplates, templateSource, type KeySpec } from "./templates";
 
 export class DraftError extends Error {}
@@ -48,22 +48,36 @@ class Builder {
 
   // 서술 문자열 — 근거 없는 숫자 검사, [[참조]] 와 [[참조|자릿수]] 를 값으로 치환
   text(raw: unknown, at: string, max: number = LIMITS.text): string {
+    return this.marked(raw, at, max).text;
+  }
+
+  // 서술 문자열과 수치 위치 — 치환된 숫자 값의 시작·길이와 수치 키, 지면의 수치 선택 단위
+  marked(raw: unknown, at: string, max: number = LIMITS.text): { text: string; nums?: NumMark[] } {
     // 목록 항목 형식({text})으로 감싼 서술은 본문 문자열로 수용
     if (typeof raw === "object" && raw !== null && !Array.isArray(raw) && Object.keys(raw).length === 1 && typeof (raw as { text?: unknown }).text === "string") raw = (raw as { text: string }).text;
     if (typeof raw !== "string") {
       this.errors.push(`${at}: 문자열이어야 합니다`);
-      return "";
+      return { text: "" };
     }
     this.known ??= knownLabels(this.cache);
     const bare = bareNumbers(raw, this.known);
     if (bare.length) this.errors.push(`${at}: 참조 없는 숫자 ${[...new Set(bare)].join(", ")} — 수치는 [[조회ID:경로]] 로 적고, 날짜는 M월 D일·MM-DD 형식으로 적으세요`);
     let n = 0;
-    const out = raw.replace(inlineRefs(), (_all, ref: string, digits?: string) => {
-      const r = this.resolve(ref, `${at}#${++n}`);
-      return r === null ? "?" : this.show(r.value, digits === undefined ? undefined : Number(digits));
-    });
+    let out = "";
+    let last = 0;
+    const nums: NumMark[] = [];
+    for (const m of raw.matchAll(inlineRefs())) {
+      out += raw.slice(last, m.index);
+      last = m.index + m[0].length;
+      const key = `${at}#${++n}`;
+      const r = this.resolve(m[1], key);
+      const shown = r === null ? "?" : this.show(r.value, m[2] === undefined ? undefined : Number(m[2]));
+      if (r && typeof r.value === "number") nums.push({ at: out.length, len: shown.length, key });
+      out += shown;
+    }
+    out += raw.slice(last);
     if (out.length > max) this.errors.push(`${at}: ${max}자를 넘습니다`);
-    return out;
+    return nums.length ? { text: out, nums } : { text: out };
   }
 
   show(v: number | string, digits?: number) {
@@ -111,9 +125,9 @@ class Builder {
   fill(key: string, spec: KeySpec, raw: unknown): Fill | null {
     switch (spec.kind) {
       case "meta":
-        return { kind: "meta", text: this.text(raw, key, LIMITS.meta) };
+        return { kind: "meta", ...this.marked(raw, key, LIMITS.meta) };
       case "text":
-        return { kind: "text", text: this.text(raw, key) };
+        return { kind: "text", ...this.marked(raw, key) };
       case "value": {
         const o = typeof raw === "string" ? { ref: raw } : isObj(raw) ? raw : null;
         if (!o) return this.fail(`${key}: {ref, digits?, unit?} 객체여야 합니다`);
@@ -149,8 +163,10 @@ class Builder {
           kind: "list",
           items: raw.map((x, i) => {
             const o = typeof x === "string" ? { text: x } : isObj(x) ? x : { text: "" };
+            // 강조 행 표시 — 참·거짓 외 값은 내용 소실 방지를 위해 거부
+            if (o.lead !== undefined && typeof o.lead !== "boolean") this.fail(`${key}[${i}].lead: 참·거짓 값이어야 합니다(강조 행 표시). 소제목은 text 에 포함하세요`);
             return {
-              text: this.text(o.text, `${key}[${i}]`, LIMITS.listItem),
+              ...this.marked(o.text, `${key}[${i}]`, LIMITS.listItem),
               when: o.when === undefined ? undefined : this.text(o.when, `${key}[${i}].when`, LIMITS.listWhen),
               lead: o.lead === true ? true : undefined,
             };
@@ -238,17 +254,17 @@ export async function templateCatalog(account: Account) {
       keys: Object.fromEntries(
         Object.entries(t.keys)
           .filter(([k, s]) => (s.by === "llm" || s.by === "query") && !k.startsWith("period_") && k !== "doc_title")
-          .map(([k, s]) => [k, { kind: s.kind, label: s.label, required: s.required }]),
+          .map(([k, s]) => [k, { kind: s.kind, label: s.label, required: s.required, ...(s.guide ? { guide: s.guide } : {}) }]),
       ),
     })),
   };
 }
 
 // 기안 — 오류가 하나라도 있으면 초안 없이 오류 목록으로 실패, 필수 키 누락은 경고로 초안 생성
-// 저장 보고서 지면 — 저장된 채움 값으로 서식 재렌더, 조회 재실행 없음
-export async function renderSaved(templateId: string, fills: Fills) {
+// 저장 보고서 지면 — 저장된 채움 값으로 서식 재렌더, 조회 재실행 없음, 수치 키 목록으로 수치 표시
+export async function renderSaved(templateId: string, fills: Fills, numKeys?: ReadonlySet<string>) {
   const t = await getTemplate(templateId);
-  return t ? renderTemplate(await templateSource(t), t.keys, fills) : null;
+  return t ? renderTemplate(await templateSource(t), t.keys, fills, numKeys) : null;
 }
 
 export async function draftReport(input: Record<string, unknown>, account: Account, cache: RunCache): Promise<Draft> {
@@ -287,6 +303,6 @@ export async function draftReport(input: Record<string, unknown>, account: Accou
   const parsed = parseFills(fills);
   if (!parsed.ok) throw new DraftError(parsed.error);
   const issues = fillIssues(t.keys, { ...fills, ...systemFills(null) });
-  const html = renderTemplate(await templateSource(t), t.keys, { ...fills, ...systemFills(null) });
+  const html = renderTemplate(await templateSource(t), t.keys, { ...fills, ...systemFills(null) }, new Set(b.numbers.map((x) => x.key)));
   return { template: { id: t.id, name: t.name }, title, period: { label, from, to }, fills, numbers: b.numbers, html, warnings: [...warnings, ...issues] };
 }
