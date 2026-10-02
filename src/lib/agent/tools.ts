@@ -66,6 +66,12 @@ function keep(ctx: DraftContext, queryId: string, name: string, input: unknown, 
   ctx.cache.set(queryId, { name, input, result });
 }
 
+// 결과 건수 — 구분 없는 KPI 분석은 합계 산출 시 1건, 산출 불가 시 0건
+function analysisCount(a: NonNullable<Awaited<ReturnType<typeof runAnalysis>>>) {
+  if ("total" in a && a.groupBy === null) return "current" in a.total && a.total.current?.value != null ? 1 : 0;
+  return a.rows.length;
+}
+
 async function dispatch(name: string, input: Record<string, unknown>, account: Account, ctx: DraftContext): Promise<ToolOutcome> {
   if (isDraftingTool(name)) return runDraftingTool(name, input, account, ctx);
   if (name === "list_datasets") return { content: fit({ datasets: await listDatasets(account.allowedTables) }), isError: false };
@@ -73,7 +79,7 @@ async function dispatch(name: string, input: Record<string, unknown>, account: A
   if (name === "describe_table") return { content: fit(await describeTable(String(input.table ?? ""), account.allowedTables)), isError: false };
   const analysis = await runAnalysis(name, input, account);
   if (analysis) keep(ctx, analysis.queryId, name, input, analysis);
-  if (analysis) return { content: fit(analysis), isError: false, queryId: analysis.queryId, rowCount: analysis.rows.length, truncated: analysis.truncated, elapsedMs: analysis.elapsedMs };
+  if (analysis) return { content: fit(analysis), isError: false, queryId: analysis.queryId, rowCount: analysisCount(analysis), truncated: analysis.truncated, elapsedMs: analysis.elapsedMs };
   const out =
     name === "run_sql"
       ? await runSql(String(input.sql ?? ""), account)
