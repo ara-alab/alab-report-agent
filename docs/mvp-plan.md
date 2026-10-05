@@ -127,7 +127,7 @@ MES/ERP 데이터를 조회·분석해 기업 서식 보고서를 자동 기안�
 - 실행 기록: `ALAB_AGENT_RUN_RECORD=1` 일 때만 `POST /api/agent` 1회마다 `runs/{runId}.ndjson`(요청 정보 + 스트림 이벤트, 연속 본문 조각 병합·경과 ms)과 목록 요약 1줄 저장, `runId` 는 `start` 이벤트로 전달 — 저장 실패는 응답에 영향 없음
 - 수치 근거: `GET /api/reports/{id}/evidence?account={계정}&key={수치 키}` — 수치 1건의 판정·저장/원본 값·조회 조건·SQL·산식·원본 행·원천 테이블, 좌측 레일 근거 탭이 사용
 - HWPX 내보내기: `GET /api/reports/{id}/export?account={계정}&format=hwpx` — 단건 조회와 같은 계정 범위, `{문서번호}.hwpx` 첨부 응답, 리본 「HWPX 내보내기」가 사용(저장 전 초안은 안내만)
-- 정합성 검증: `GET /api/reports/{id}/verify?account={계정}` — 저장 수치 전체의 판정(일치·불일치·원천 없음·출처 없음)별 건수·일치율과 수치별 판정, 서로 다른 출처 조회 60건 상한, 리본 정합성 검증 버튼이 사용
+- 정합성 검증: `GET /api/reports/{id}/verify?account={계정}` — 저장 수치 전체의 판정(일치·불일치·원천 없음·출처 없음)별 건수·일치율과 수치별 판정, 서로 다른 출처 조회 60건 상한, 리본 정합성 검증 버튼이 사용 — 결과는 근거 탭 요약(일치율·판정별 건수·일치가 아닌 수치 목록)과 지면 수치 표시(정합성 배지 역할, 일치는 표시 없음)
 - 조회 범위: 근거·검증 모두 단건 조회와 같은 계정 범위, 재조회는 작성 계정 권한 — 없는 보고서 404(`not_found`), 검증 불가 `not_verifiable`
 - 데이터 탭: `GET /api/datasets?account={계정}`(테이블 목록·적재 기간) · `GET /api/datasets/{table}?account={계정}`(구조·표본, 범위 밖 400)
 - 서식 틀: `GET /api/templates/{id}/preview?account={계정}` — 계정·시스템 키만 채운 지면, 초안 도착 전 표시, 없는 서식 404

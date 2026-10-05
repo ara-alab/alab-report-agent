@@ -65,6 +65,11 @@
     --paper-caret: #D33A33;    /* 캐럿 */
     --paper-ime-ink: #0055AA;  /* IME 조합 중 문자 */
     --paper-ime-bg: #DCEAFF;
+    --paper-hint: #737A85;     /* 선택 가능 항목 점선 — 흰 지면 3:1 이상 */
+    --paper-mark: #FFF3BF;     /* 선택한 수치 바탕 */
+    --paper-bad: #B42318;      /* 정합성 원본 불일치 */
+    --paper-bad-bg: #FDECEA;
+    --paper-warn: #B54708;     /* 정합성 원본 확인 불가 */
 
     /* 눈금자 */
     --ruler-bg: #FFFFFF;
@@ -1520,18 +1525,42 @@
 
 /* 개발용 구현 — 지면 섹션 선택 표시, UI 실구현 단계에서 교체 */
 #docPage .rpt-key { cursor: pointer; }
-#docPage .rpt-key:hover { outline: 1px dashed #8a8a8a; outline-offset: 2px; }
-/* 개발용 구현 — 지면 수치 근거 선택, 근거 패널·데이터 상세, UI 실구현 단계에서 교체 */
-#docPage .rpt-num { cursor: help; border-bottom: 1px dotted #8a8a8a; }
-#docPage .rpt-num:hover, #docPage .rpt-num.on { background: #fff3bf; }
+#docPage .rpt-key:hover { outline: 1px dashed var(--paper-hint); outline-offset: 2px; }
+/* 지면 수치 — 누르면 근거 탭에 근거 표시, 정합성 검증 후 불일치·확인 불가·출처 없음만 표시(일치는 표시 없음) */
+#docPage .rpt-num { cursor: help; border-bottom: 1px dotted var(--paper-hint); }
+#docPage .rpt-num:hover, #docPage .rpt-num.on { background: var(--paper-mark); }
+#docPage .rpt-num.v-mismatch { border-bottom: 2px solid var(--paper-bad); background: var(--paper-bad-bg); }
+#docPage .rpt-num.v-missing { border-bottom: 2px dashed var(--paper-warn); }
+#docPage .rpt-num.v-no_source { border-bottom: 2px dotted var(--paper-hint); }
+#docPage .rpt-num.v-mismatch.on, #docPage .rpt-num.v-mismatch:hover { background: var(--paper-mark); }
+/* 근거 탭 — 위 정합성 요약, 아래 선택 수치 근거 */
 .ev-panel, .ds-detail { font-size: 12px; gap: 12px; }
 .ds-detail { display: flex; flex-direction: column; }
 .ev-sec { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ev-h { font-size: 13px; font-weight: 600; color: var(--ink); word-break: break-all; }
 .ev-sub { font-size: 11.5px; color: var(--ink-faint); font-family: var(--mono); word-break: break-all; }
 .ev-badge { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 11px; font-weight: 400; color: var(--ink-muted); }
-.ev-badge.match { color: #1b7f3b; border-color: #1b7f3b; }
-.ev-badge.mismatch { color: #b42318; border-color: #b42318; }
+.ev-badge.match { color: var(--good); border-color: var(--good); }
+.ev-badge.mismatch { color: var(--danger); border-color: var(--danger); }
+.ev-badge.missing { color: var(--annot); border-color: var(--annot); }
+/* 정합성 요약 — 일치율·판정별 건수, 일치가 아닌 수치 목록(누르면 지면 수치로 이동) */
+.ev-verify { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ev-vhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ev-rate { display: flex; align-items: baseline; gap: 6px; color: var(--ink-muted); }
+.ev-rate b { font-size: 20px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ev-counts { display: flex; flex-wrap: wrap; gap: 4px; }
+.ev-count { padding: 0 7px; border: 1px solid var(--line); border-radius: 8px; font-size: 11.5px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ev-count.mismatch { color: var(--danger); border-color: var(--danger); }
+.ev-count.missing { color: var(--annot); border-color: var(--annot); }
+.ev-items { display: flex; flex-direction: column; gap: 3px; }
+.ev-item { display: flex; flex-direction: column; gap: 1px; padding: 5px 7px; border: 1px solid var(--line); border-left-width: 3px; border-radius: 5px; background: var(--surface); text-align: left; cursor: pointer; font-family: var(--sans); }
+.ev-item:hover, .ev-item.on { border-color: var(--line-strong); background: var(--surface-2); }
+.ev-item.mismatch { border-left-color: var(--danger); }
+.ev-item.missing { border-left-color: var(--annot); }
+.ev-item.no_source { border-left-color: var(--ink-faint); }
+.ev-item .t { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.ev-item .s { font-size: 11.5px; color: var(--ink-muted); word-break: break-all; }
+.ev-ok { color: var(--good); }
 .ev-kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 0; }
 .ev-kv dt { color: var(--ink-faint); white-space: nowrap; }
 .ev-kv dd { margin: 0; color: var(--ink); word-break: break-all; }
@@ -1593,8 +1622,8 @@
           <div class="rgroup-tools">
             <!-- 저장 — 지면의 Agent 초안 명시 저장, 저장할 초안이 없으면 잠금(저장 상태 소관) -->
             <button class="tool-lg off" type="button" id="saveBtn" disabled><span class="g">▣</span><span class="t">저장</span></button>
-            <!-- 개발용 구현 — 저장 보고서 정합성 검증, 수치별 근거 패널 구현 단계에서 교체 -->
-            <button class="tool-lg" type="button" id="devVerifyBtn" data-needdoc><span class="g">✓</span><span class="t">정합성 검증</span></button>
+            <!-- 정합성 검증 — 지면의 저장 보고서 수치를 원본 재조회와 대조, 결과는 근거 탭 요약·지면 수치 표시, 저장본이 없으면 잠금 -->
+            <button class="tool-lg off" type="button" id="verifyBtn" disabled><span class="g">✓</span><span class="t">정합성 검증</span></button>
             <!-- 내보내기 — 저장 보고서를 HWPX 파일로 내려받기, 저장 전 초안은 안내만 -->
             <button class="tool-lg" type="button" id="exportBtn" data-needdoc title="저장 보고서를 HWPX 파일로 내려받기"><span class="g">⭳</span><span class="t">HWPX 내보내기</span></button>
           </div>
@@ -1611,7 +1640,7 @@
           <div class="rail-tabs">
             <button class="rail-tab active" type="button" data-railtab="data" title="데이터"><span class="g">▦</span><span class="tl">데이터</span></button>
             <button class="rail-tab" type="button" data-railtab="reports" title="보고서"><span class="g">❏</span><span class="tl">보고서</span></button>
-            <!-- 개발용 구현 — 근거 탭, 저장 보고서 지면의 수치 선택 시 원본 재조회 결과 표시 -->
+            <!-- 근거 탭 — 정합성 검증 요약과 저장 보고서 지면의 수치 선택 시 원본 재조회 결과 표시 -->
             <button class="rail-tab" type="button" data-railtab="evidence" title="근거"><span class="g">⌕</span><span class="tl">근거</span></button>
           </div>
           <span class="rail-actions">
@@ -3464,6 +3493,7 @@
         saveBtn.classList.toggle('off', !can);
         saveBtn.title = saving ? '저장 중' : !draft ? '저장할 Agent 초안이 없습니다' : docNo || editNo ? '같은 문서번호로 저장' : '초안 저장';
       }
+      syncVerifyBtn();   // 정합성 검증 대상(지면의 저장본)도 같은 시점에 바뀜
     }
     syncSaveState();
     // 저장 후 문서번호·작성일이 기록된 저장본 지면으로 갱신, 초안 상태(재저장 대상)는 유지
@@ -3496,7 +3526,7 @@
       }).catch(function (err) { showToast('저장하지 못했습니다: ' + err.message); })
         .then(function () { saving = false; syncSaveState(); });
     });
-    // 개발용 구현 — 저장 보고서 수치를 출처 조회 재실행 결과와 대조, 요약과 불일치 항목을 토스트로 표시
+    // HWPX 내보내기 — 지면의 저장 보고서를 파일로 내려받기, 저장 전 초안은 안내만
     var exportBtn = document.getElementById('exportBtn');
     if (exportBtn) exportBtn.addEventListener('click', function () {
       if (exportBtn.disabled) return;
@@ -3519,22 +3549,6 @@
           showToast(name + ' 내려받기');
         });
       }).catch(function (e) { showToast(e.message); }).then(function () { exportBtn.disabled = false; });
-    });
-    var devVerifyBtn = document.getElementById('devVerifyBtn');
-    if (devVerifyBtn) devVerifyBtn.addEventListener('click', function () {
-      if (devVerifyBtn.disabled) return;
-      var id = editReport ? editReport.id : (lastDraftRef && lastDraftRef.saved ? lastDraftRef.saved.id : null);
-      if (!id) { showToast('검증할 저장 보고서가 없습니다'); return; }
-      var acct = AlabAccount.current();
-      devVerifyBtn.disabled = true;
-      AlabApi.getJson('reports/' + encodeURIComponent(id) + '/verify?account=' + encodeURIComponent(acct ? acct.id : '')).then(function (j) {
-        var s = j.summary;
-        var bad = j.numbers.filter(function (n) { return n.status !== 'match'; }).slice(0, 3).map(function (n) {
-          return (n.label || n.key) + ' ' + n.status + (n.current ? ' (저장 ' + n.stored.value + ' · 원본 ' + n.current.value + ')' : n.reason ? ' (' + n.reason + ')' : '');
-        });
-        showToast('정합성 검증 · 일치 ' + s.match + '/' + s.total + (s.rate === null ? '' : ' (' + Math.round(s.rate * 1000) / 10 + '%)') + (bad.length ? ' · ' + bad.join(' / ') : ''));
-      }).catch(function (err) { showToast('검증하지 못했습니다: ' + err.message); })
-        .then(function () { devVerifyBtn.disabled = false; });
     });
     // 저장 보고서 진입점 — ?report=<id>[&account=<id>] 로 저장 보고서를 지면에 표시, 보고서 탭 「열기」와 주소 직접 진입 공용
     function openSavedReport() {
@@ -3591,14 +3605,28 @@
         sendAgentChat(msg, { mode: 'draft', section: key });
       });
     });
-    // ── 개발용 구현 — 근거 탭: 지면 수치(data-num) 선택 시 출처 조회를 작성 계정 권한으로 재실행한 결과·조회 조건·원천 테이블 표시
+    // ── 근거 탭 — 위 정합성 요약(GET /api/reports/{id}/verify), 아래 선택 수치 근거(…/evidence)
+    // 수치 근거는 출처 조회를 작성 계정 권한으로 재실행한 결과·조회 조건·원천 테이블
     var evidencePanel = document.getElementById('evidencePanel');
+    var evVerifyEl = null, evDetailEl = null;
+    if (evidencePanel) {
+      evVerifyEl = document.createElement('div');
+      evVerifyEl.className = 'ev-sec ev-verify';
+      evVerifyEl.hidden = true;
+      evDetailEl = document.createElement('div');
+      evDetailEl.className = 'ev-panel';
+      evDetailEl.style.display = 'flex';
+      evDetailEl.style.flexDirection = 'column';
+      evidencePanel.appendChild(evVerifyEl);
+      evidencePanel.appendChild(evDetailEl);
+    }
     var evidenceSeq = 0;
     var EV_STATUS = { match: '원본 일치', mismatch: '원본 불일치', missing: '원본 확인 불가', no_source: '출처 기록 없음' };
+    var EV_HINT = '저장 보고서 지면의 수치를 누르면 근거가 여기에 표시됩니다';
     function evMsg(text) {
-      if (evidencePanel) evidencePanel.innerHTML = '<div class="rep-msg">' + escStr(text) + '</div>';
+      if (evDetailEl) evDetailEl.innerHTML = '<div class="rep-msg">' + escStr(text) + '</div>';
     }
-    evMsg('저장 보고서 지면의 수치를 누르면 근거가 여기에 표시됩니다');
+    evMsg(EV_HINT);
     function evNum(v, unit) {
       if (v === null || v === undefined) return '-';
       return Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 6 }) + (unit ? ' ' + unit : '');
@@ -3642,10 +3670,10 @@
             return '<button type="button" class="rep-act" data-table="' + escStr(t.table) + '">' + escStr((t.title ? t.title + ' · ' : '') + t.table) + '</button>';
           }).join('') + '</div></div>';
       }
-      evidencePanel.innerHTML = html;
+      evDetailEl.innerHTML = html;
     }
     function showEvidence(id, key, section) {
-      if (!evidencePanel) return;
+      if (!evDetailEl) return;
       var mine = ++evidenceSeq;
       evMsg('원본을 다시 조회하는 중…');
       AlabApi.getJson('reports/' + encodeURIComponent(id) + '/evidence?' + acctParam() + '&key=' + encodeURIComponent(key)).then(function (j) {
@@ -3654,30 +3682,142 @@
         if (mine === evidenceSeq) evMsg('근거를 불러오지 못했습니다: ' + err.message);
       });
     }
-    // 수치 선택 — 캡처 단계에서 받아 섹션 수정 입력창보다 우선
+    // 수치 선택 — 지면 강조·근거 탭 열기·근거 조회, 검증 목록 항목도 같은 경로
+    function selectNumber(key, numEl) {
+      var id = shownReportId();
+      if (!id) { showToast('저장 보고서에서만 근거를 볼 수 있습니다'); return; }
+      docPage.querySelectorAll('.rpt-num.on').forEach(function (x) { x.classList.remove('on'); });
+      if (numEl) numEl.classList.add('on');
+      if (evVerifyEl) evVerifyEl.querySelectorAll('.ev-item').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-key') === key); });
+      openRailTab('evidence');
+      var sec = numEl ? numEl.closest('.rpt-key[data-label]') : null;
+      showEvidence(id, key, sec ? sec.getAttribute('data-label') : '');
+    }
+    // 지면 수치 클릭 — 캡처 단계에서 받아 섹션 수정 입력창보다 우선
     if (docPage) docPage.addEventListener('click', function (ev) {
       var num = ev.target.closest && ev.target.closest('.rpt-num[data-num]');
       if (!num || ev.target.closest('.dev-sec-box')) return;
       ev.stopPropagation();
-      var id = shownReportId();
-      if (!id) { showToast('저장 보고서에서만 근거를 볼 수 있습니다'); return; }
-      docPage.querySelectorAll('.rpt-num.on').forEach(function (x) { x.classList.remove('on'); });
-      num.classList.add('on');
-      openRailTab('evidence');
-      var sec = num.closest('.rpt-key[data-label]');
-      showEvidence(id, num.getAttribute('data-num'), sec ? sec.getAttribute('data-label') : '');
+      selectNumber(num.getAttribute('data-num'), num);
     }, true);
-    // 원천 테이블 — 데이터 탭 상세로 이동
+
+    // ── 정합성 검증 — 저장 수치 전체를 원본 재조회와 대조, 결과는 지면이 바뀔 때까지 유지
+    var verifyBtn = document.getElementById('verifyBtn');
+    var verifying = false;
+    var verifyResult = null;   // {id, root, data} — root 는 검증 당시 지면 최상위 요소(지면 교체 감지용)
+    var verifySeq = 0;
+    function syncVerifyBtn() {
+      if (!verifyBtn) return;
+      var id = docOn ? shownReportId() : null;
+      var can = !!id && !verifying;
+      verifyBtn.disabled = !can;
+      verifyBtn.classList.toggle('off', !can);
+      verifyBtn.title = verifying ? '검증 중' : id ? '저장 수치를 원본 재조회와 대조' : lastDraftRef ? '저장한 뒤 검증할 수 있습니다' : '검증할 저장 보고서가 없습니다';
+    }
+    syncVerifyBtn();
+    function numEls(key) {
+      return docPage ? Array.prototype.filter.call(docPage.querySelectorAll('.rpt-num[data-num]'), function (x) { return x.getAttribute('data-num') === key; }) : [];
+    }
+    function clearVerifyMarks() {
+      if (docPage) docPage.querySelectorAll('.rpt-num.v-mismatch, .rpt-num.v-missing, .rpt-num.v-no_source').forEach(function (x) {
+        x.classList.remove('v-mismatch', 'v-missing', 'v-no_source');
+        x.removeAttribute('title');
+      });
+    }
+    // 판정 표시 — 일치는 표시 없음, 나머지는 지면 수치 밑줄과 마우스 설명
+    function markVerify(numbers) {
+      clearVerifyMarks();
+      numbers.forEach(function (n) {
+        if (n.status === 'match') return;
+        numEls(n.key).forEach(function (x) {
+          x.classList.add('v-' + n.status);
+          x.title = EV_STATUS[n.status] + (n.current ? ' · 원본 ' + evNum(n.current.value) : n.reason ? ' · ' + n.reason : '');
+        });
+      });
+    }
+    function verifyItemText(n) {
+      if (n.status === 'mismatch') return '저장 ' + evNum(n.stored.value) + ' · 원본 ' + (n.current ? evNum(n.current.value) : '-');
+      return EV_STATUS[n.status] + (n.reason ? ' · ' + n.reason : '');
+    }
+    function renderVerify(state) {
+      if (!evVerifyEl) return;
+      evVerifyEl.hidden = !state;
+      if (!state) { evVerifyEl.innerHTML = ''; return; }
+      var head = '<div class="ev-vhead"><span class="ev-h">정합성 검증</span>' +
+        (state.data ? '<button type="button" class="rep-act" data-verify>다시 검증</button>' : '') + '</div>';
+      if (state.loading) { evVerifyEl.innerHTML = head + '<div class="ev-sub">출처 조회를 다시 실행해 저장 수치와 대조하는 중…</div>'; return; }
+      if (state.error) { evVerifyEl.innerHTML = head + '<div class="ev-sub">검증하지 못했습니다: ' + escStr(state.error) + '</div>'; return; }
+      var j = state.data, s = j.summary;
+      var html = head + '<div class="ev-sub">' + escStr(j.report.docNo + ' · 수치 ' + s.total + '건 · 재조회 ' + s.calls + '건') + '</div>';
+      if (!s.total) { evVerifyEl.innerHTML = html + '<div class="ev-sub">검증할 수치가 없습니다</div>'; return; }
+      html += '<div class="ev-rate"><b>' + (s.rate === null ? '-' : escStr(Math.round(s.rate * 1000) / 10) + '%') + '</b>일치율</div>';
+      html += '<div class="ev-counts">' + [['match', s.match], ['mismatch', s.mismatch], ['missing', s.missing], ['no_source', s.noSource]].map(function (c) {
+        return '<span class="ev-count ' + (c[1] ? c[0] : '') + '">' + escStr(EV_STATUS[c[0]] + ' ' + c[1]) + '</span>';
+      }).join('') + '</div>';
+      var bad = j.numbers.filter(function (n) { return n.status !== 'match'; });
+      if (!bad.length) html += '<div class="ev-ok">모든 수치가 원본과 일치합니다</div>';
+      else html += '<div class="ev-items">' + bad.map(function (n) {
+        return '<button type="button" class="ev-item ' + escStr(n.status) + '" data-key="' + escStr(n.key) + '">' +
+          '<span class="t">' + escStr(n.label || n.key) + '</span><span class="s">' + escStr(verifyItemText(n)) + '</span></button>';
+      }).join('') + '</div>';
+      evVerifyEl.innerHTML = html;
+    }
+    function clearVerify() {
+      ++verifySeq;
+      verifyResult = null;
+      verifying = false;
+      clearVerifyMarks();
+      renderVerify(null);
+      syncVerifyBtn();
+    }
+    function runVerify() {
+      var id = shownReportId();
+      if (!id || verifying || !docPage) return;
+      var mine = ++verifySeq;
+      verifying = true;
+      verifyResult = null;
+      clearVerifyMarks();
+      syncVerifyBtn();
+      openRailTab('evidence');
+      renderVerify({ loading: true });
+      AlabApi.getJson('reports/' + encodeURIComponent(id) + '/verify?' + acctParam()).then(function (j) {
+        if (mine !== verifySeq) return;
+        verifyResult = { id: id, root: docPage.firstElementChild, data: j };
+        markVerify(j.numbers);
+        renderVerify({ data: j });
+        var s = j.summary;
+        showToast('정합성 검증 완료' + (s.rate === null ? '' : ' · 일치율 ' + Math.round(s.rate * 1000) / 10 + '%'));
+      }, function (err) {
+        if (mine === verifySeq) renderVerify({ error: err.message });
+      }).then(function () {
+        if (mine !== verifySeq) return;
+        verifying = false;
+        syncVerifyBtn();
+      });
+    }
+    if (verifyBtn) verifyBtn.addEventListener('click', runVerify);
+    // 지면 교체(다른 보고서·재저장·새 초안) 시 이전 검증 결과 폐기 — 지면 최상위 요소가 바뀌면 교체로 판단
+    if (window.MutationObserver && docPage) new MutationObserver(function () {
+      if ((verifyResult || verifying) && docPage.firstElementChild !== (verifyResult ? verifyResult.root : null)) clearVerify();
+    }).observe(docPage, { childList: true });
     if (evidencePanel) evidencePanel.addEventListener('click', function (ev) {
+      // 원천 테이블 — 데이터 탭 상세로 이동
       var b = ev.target.closest('[data-table]');
-      if (!b) return;
-      openRailTab('data');
-      showDataset(b.getAttribute('data-table'));
+      if (b) { openRailTab('data'); showDataset(b.getAttribute('data-table')); return; }
+      if (ev.target.closest('[data-verify]')) { runVerify(); return; }
+      // 검증 목록 항목 — 지면의 해당 수치로 이동해 근거 표시
+      var it = ev.target.closest('.ev-item[data-key]');
+      if (!it) return;
+      var key = it.getAttribute('data-key');
+      var el = numEls(key)[0] || null;
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      selectNumber(key, el);
     });
-    // 계정 전환 — 이전 계정 기준 근거는 폐기
+    // 계정 전환 — 이전 계정 기준 근거·검증 결과는 폐기
     if (window.AlabAccount) AlabAccount.onChange(function () {
       ++evidenceSeq;
-      evMsg('저장 보고서 지면의 수치를 누르면 근거가 여기에 표시됩니다');
+      evMsg(EV_HINT);
+      clearVerify();
     });
 
     // 드로어 전송 — 시작 화면에선 「대화로 시작」과 같은 경로로 빈 지면부터 염
